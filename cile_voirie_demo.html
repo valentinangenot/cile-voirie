@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CILE — Générateur de demandes voirie</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root {
+  --navy: #0f2b4a;
+  --navy-mid: #1a4a7a;
+  --navy-light: #2a6ab0;
+  --bg: #eef1f5;
+  --card: #ffffff;
+  --card-alt: #f7f9fb;
+  --border: #dde2e8;
+  --border-light: #e8ecf0;
+  --text: #2c3e50;
+  --text-sec: #5a6a7c;
+  --text-dim: #8899aa;
+  --text-label: #3a4a5c;
+  --accent: #1a4a7a;
+  --green: #1a6b3c;
+  --green-bg: #e6f5ed;
+  --green-border: #a3d9b8;
+  --red: #c00;
+  --red-bg: #fde8e8;
+  --warn-bg: #fef3e0;
+  --warn-border: #f0c060;
+  --warn-text: #8a5a00;
+  --info-bg: #e8f0fa;
+  --info-border: #a0c0e0;
+  --radius: 10px;
+  --radius-sm: 7px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.55;min-height:100vh;}
+
+/* Header */
+.header{background:linear-gradient(135deg,var(--navy) 0%,var(--navy-mid) 100%);padding:28px 32px 22px;border-bottom:3px solid var(--navy-light);}
+.header-inner{max-width:800px;margin:0 auto;display:flex;align-items:center;gap:14;}
+.header-icon{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.header h1{color:#fff;font-weight:700;font-size:19px;letter-spacing:-0.3px;}
+.header .sub{color:rgba(255,255,255,0.5);font-size:13px;margin-top:2px;}
+
+/* Layout */
+.wrap{max-width:800px;margin:0 auto;padding:24px 20px 80px;}
+
+/* Steps */
+.steps{display:flex;gap:8px;margin-bottom:28px;}
+.step-btn{flex:1;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:600;border:none;cursor:default;font-family:inherit;transition:all .2s;}
+.step-btn.active{background:var(--navy-mid);color:#fff;}
+.step-btn.done{background:#d0e0f0;color:var(--navy-mid);cursor:pointer;}
+.step-btn.pending{background:#e4e8ec;color:var(--text-dim);}
+
+/* Cards */
+.card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;margin-bottom:16px;}
+.card-title{padding:12px 20px;background:var(--card-alt);border-bottom:1px solid var(--border-light);font-weight:700;font-size:14px;color:var(--accent);letter-spacing:-0.2px;}
+.card-body{padding:16px 20px;display:flex;flex-direction:column;gap:12px;}
+
+/* Fields */
+.field-label{font-size:12.5px;font-weight:600;color:var(--text-label);margin-bottom:4px;}
+.field-hint{font-size:11.5px;color:var(--text-dim);margin-bottom:4px;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+
+input[type="text"],input[type="date"],input[type="tel"],select,textarea{
+  width:100%;padding:9px 12px;border-radius:var(--radius-sm);border:1px solid #d0d5dc;
+  font-size:13.5px;font-family:inherit;color:var(--text);background:#fafbfc;outline:none;transition:border-color .15s;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);}
+textarea{resize:vertical;}
+
+/* Toggles */
+.toggle{
+  display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;
+  border:1px solid #d0d5dc;background:#fafbfc;cursor:pointer;font-size:13px;font-weight:500;
+  color:var(--text-sec);transition:all .15s;width:100%;font-family:inherit;text-align:left;
+}
+.toggle.on{border-color:var(--navy-mid);background:#e8f0fa;color:var(--navy-mid);}
+.toggle-box{
+  width:18px;height:18px;border-radius:4px;border:2px solid #b0b8c4;background:#fff;
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;flex-shrink:0;transition:all .15s;
+}
+.toggle.on .toggle-box{background:var(--navy-mid);border-color:var(--navy-mid);}
+
+/* Badges */
+.badge{padding:8px 14px;border-radius:var(--radius-sm);font-size:13px;line-height:1.5;}
+.badge-ok{background:var(--green-bg);border:1px solid var(--green-border);color:var(--green);}
+.badge-warn{background:var(--warn-bg);border:1px solid var(--warn-border);color:var(--warn-text);}
+.badge-error{background:var(--red-bg);border:1px solid #e8a0a0;color:#8a1a1a;}
+.badge-info{background:var(--info-bg);border:1px solid var(--info-border);color:var(--accent);}
+
+/* Rules panel */
+.rules-panel{background:#f4f7fb;border-radius:8px;padding:12px 16px;font-size:12.5px;color:#4a5b73;line-height:1.7;}
+.rules-panel strong{color:var(--accent);}
+
+/* Recap */
+.recap-row{padding:5px 0;border-bottom:1px solid #f0f2f5;font-size:13.5px;}
+.recap-label{color:var(--text-dim);font-size:12px;}
+.recap-value{font-weight:500;}
+.recap-value.warn{color:var(--red);}
+
+/* Buttons */
+.btn{padding:11px 24px;border-radius:8px;border:none;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .15s;}
+.btn-primary{background:var(--navy-mid);color:#fff;}
+.btn-primary:hover{background:var(--navy);}
+.btn-primary:disabled{background:#b0bcc8;cursor:not-allowed;}
+.btn-secondary{background:#e4e8ec;color:#4a5b73;}
+.btn-secondary:hover{background:#d4dae2;}
+.btn-row{display:flex;justify-content:space-between;margin-top:12px;}
+.btn-row-end{display:flex;justify-content:flex-end;gap:12px;margin-top:12px;}
+
+/* Tip box */
+.tip{padding:10px 14px;background:#fff8e5;border-radius:6px;font-size:12.5px;color:#8a6d00;margin-top:8px;}
+
+.hidden{display:none;}
+
+/* Validation */
+.field-error input,.field-error select,.field-error textarea{border-color:#d44!important;background:#fff8f8!important;}
+.error-msg{font-size:11.5px;color:#c33;margin-top:3px;display:none;}
+.field-error .error-msg{display:block;}
+.duration-warn{padding:10px 14px;border-radius:var(--radius-sm);font-size:13px;line-height:1.5;display:none;margin-top:4px;}
+.duration-warn.show{display:block;}
+.duration-warn.orange{background:var(--warn-bg);border:1px solid var(--warn-border);color:var(--warn-text);}
+.duration-warn.red{background:var(--red-bg);border:1px solid #e8a0a0;color:#8a1a1a;}
+
+@media(max-width:640px){
+  .header{padding:20px 16px 16px;}
+  .wrap{padding:16px 14px 60px;}
+  .grid-2,.grid-3{grid-template-columns:1fr;}
+  #mapContainer{grid-template-columns:1fr!important;}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="header-icon">💧</div>
+    <div>
+      <h1>CILE — Générateur de demandes voirie</h1>
+      <div class="sub">Demande automatique adaptée aux exigences de chaque commune</div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <!-- Steps -->
+  <div class="steps">
+    <button class="step-btn active" id="stepBtn0" onclick="goStep(0)">1. Informations chantier</button>
+    <button class="step-btn pending" id="stepBtn1" onclick="goStep(1)">2. Vérification & Génération</button>
+  </div>
+
+  <!-- ════════ STEP 0 ════════ -->
+  <div id="step0">
+
+    <!-- Localisation -->
+    <div class="card">
+      <div class="card-title">Localisation du chantier</div>
+      <div class="card-body">
+        <div class="field-hint">La commune sera détectée automatiquement à partir de l'adresse.</div>
+        <div style="display:grid;grid-template-columns:3fr 1fr;gap:12px;">
+          <div>
+            <div class="field-label">Rue *</div>
+            <input type="text" id="rue" placeholder="Ex: Rue de la Station" oninput="onAddressChange()">
+          </div>
+          <div>
+            <div class="field-label">N°</div>
+            <input type="text" id="numero" placeholder="12" oninput="onAddressChange()">
+          </div>
+        </div>
+        <div class="grid-2">
+          <div>
+            <div class="field-label">Code postal *</div>
+            <div id="vCp">
+              <input type="text" id="codePostal" placeholder="4000" maxlength="4" oninput="onAddressChange();validateCodePostal();">
+              <div class="error-msg">Code postal belge à 4 chiffres requis.</div>
+            </div>
+          </div>
+          <div>
+            <div class="field-label">Localité *</div>
+            <input type="text" id="localite" placeholder="Liège" oninput="onAddressChange()">
+          </div>
+        </div>
+        <div id="adresseComposee" style="font-size:12px;color:var(--text-dim);margin-top:-4px;"></div>
+        <div id="geoStatus"></div>
+        <div id="mapContainer" class="hidden" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;">
+          <div style="border-radius:8px;overflow:hidden;border:1px solid var(--border);">
+            <div style="padding:4px 10px;background:var(--card-alt);font-size:11px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;">Carte</div>
+            <iframe id="mapFrame" width="100%" height="220" style="border:0;display:block;" loading="lazy" src=""></iframe>
+          </div>
+          <div style="border-radius:8px;overflow:hidden;border:1px solid var(--border);">
+            <div style="padding:4px 10px;background:var(--card-alt);font-size:11px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;">Street View</div>
+            <iframe id="streetFrame" width="100%" height="220" style="border:0;display:block;" loading="lazy" src=""></iframe>
+          </div>
+        </div>
+        <div id="rulesPanel" class="hidden"></div>
+        <div class="grid-2">
+          <div>
+            <div class="field-label">N° Powalco</div>
+            <input type="text" id="numPowalco" placeholder="Si disponible">
+          </div>
+          <div>
+            <div class="field-label">Route régionale ?</div>
+            <button class="toggle" id="togRouteReg" onclick="toggleBtn('togRouteReg')">
+              <span class="toggle-box"></span>
+              <span class="toggle-label">Non</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Planning -->
+    <div class="card">
+      <div class="card-title">Planning</div>
+      <div class="card-body">
+        <div class="grid-3">
+          <div>
+            <div class="field-label">Date de début *</div>
+            <div id="vDateDebut">
+              <input type="date" id="dateDebut" onchange="validateDates()">
+              <div class="error-msg">La date ne peut pas être dans le passé.</div>
+            </div>
+          </div>
+          <div>
+            <div class="field-label">Date de fin prévue *</div>
+            <div id="vDateFin">
+              <input type="date" id="dateFin" onchange="validateDates()">
+              <div class="error-msg">La date de fin doit être après la date de début.</div>
+            </div>
+          </div>
+          <div>
+            <div class="field-label">Horaire des travaux</div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <input type="time" id="heureDe" value="07:00" style="flex:1;" onchange="validateHoraire()">
+              <span style="color:var(--text-dim);font-size:13px;">à</span>
+              <input type="time" id="heureA" value="17:00" style="flex:1;" onchange="validateHoraire()">
+            </div>
+            <div class="duration-warn" id="horaireWarn"></div>
+          </div>
+        </div>
+        <div class="duration-warn" id="durationWarn"></div>
+      </div>
+    </div>
+
+    <!-- Nature -->
+    <div class="card">
+      <div class="card-title">Nature de l'intervention</div>
+      <div class="card-body">
+        <div class="grid-2">
+          <div>
+            <div class="field-label">Type d'intervention *</div>
+            <select id="typeIntervention">
+              <option value="">— Sélectionner —</option>
+              <option>Réparation de fuite</option>
+              <option>Nouveau raccordement</option>
+              <option>Renouvellement de conduite</option>
+              <option>Pose de compteur</option>
+              <option>Entretien préventif</option>
+              <option>Remplacement de vanne</option>
+              <option>Branchement</option>
+              <option>Autre</option>
+            </select>
+          </div>
+          <div>
+            <div class="field-label">Nature des travaux</div>
+            <input type="text" id="natureTravaux" placeholder="Ex: Conduite DN150 en fonte">
+          </div>
+        </div>
+        <div>
+          <div class="field-label">Description détaillée</div>
+          <textarea id="description" rows="3" placeholder="Description libre de l'intervention…"></textarea>
+        </div>
+        <div>
+          <div class="field-label">Nuisances prévues</div>
+          <input type="text" id="nuisances" placeholder="Ex: Bruit, poussière, coupure d'eau temporaire">
+        </div>
+      </div>
+    </div>
+
+    <!-- Impact -->
+    <div class="card">
+      <div class="card-title">Impact sur la circulation</div>
+      <div class="card-body">
+        <div class="grid-2">
+          <button class="toggle" id="togUrgence" onclick="toggleBtn('togUrgence')"><span class="toggle-box"></span><span class="toggle-label">Urgence — Non</span></button>
+          <button class="toggle" id="togRouteBloquee" onclick="toggleBtn('togRouteBloquee')"><span class="toggle-box"></span><span class="toggle-label">Route bloquée — Non</span></button>
+          <button class="toggle" id="togDeviation" onclick="toggleBtn('togDeviation')"><span class="toggle-box"></span><span class="toggle-label">Déviation — Non</span></button>
+          <button class="toggle" id="togDebordChaussee" onclick="toggleBtn('togDebordChaussee')"><span class="toggle-box"></span><span class="toggle-label">Déborde chaussée — Non</span></button>
+          <button class="toggle" id="togDebordTrottoir" onclick="toggleBtn('togDebordTrottoir')"><span class="toggle-box"></span><span class="toggle-label">Déborde trottoir — Non</span></button>
+          <button class="toggle" id="togFeux" onclick="toggleBtn('togFeux')"><span class="toggle-box"></span><span class="toggle-label">Feux impactés — Non</span></button>
+          <button class="toggle" id="togArretBus" onclick="toggleBtn('togArretBus')"><span class="toggle-box"></span><span class="toggle-label">Arrêt de bus impacté — Non</span></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Responsable -->
+    <div class="card">
+      <div class="card-title">Responsable</div>
+      <div class="card-body">
+        <div class="grid-2">
+          <div>
+            <div class="field-label">Responsable chantier CILE *</div>
+            <input type="text" id="responsable" placeholder="Nom et prénom">
+          </div>
+          <div>
+            <div class="field-label">Téléphone *</div>
+            <div id="vTel">
+              <input type="tel" id="telResponsable" placeholder="04XX/XX.XX.XX" oninput="validatePhone()">
+              <div class="error-msg">Numéro belge invalide (min. 9 chiffres, ex: 0471/23.45.67).</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="field-label">Sous-traitant éventuel</div>
+          <input type="text" id="soustraitant" placeholder="Nom de l'entreprise sous-traitante">
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row-end">
+      <button class="btn btn-secondary" onclick="resetForm()">Réinitialiser</button>
+      <button class="btn btn-primary" id="btnNext" onclick="goStep(1)" disabled>Vérifier & Générer →</button>
+    </div>
+  </div>
+
+  <!-- ════════ STEP 1 ════════ -->
+  <div id="step1" class="hidden">
+    <div class="card">
+      <div class="card-title" id="recapTitle">Récapitulatif</div>
+      <div class="card-body">
+        <div class="grid-2" id="recapGrid"></div>
+      </div>
+    </div>
+    <div class="card" style="border:2px solid var(--navy-light);">
+      <div class="card-title" style="background:var(--navy-mid);color:#fff;" id="processTitle">📋 Marche à suivre</div>
+      <div class="card-body" id="processBody" style="font-size:13.5px;line-height:1.8;"></div>
+    </div>
+    <div class="card" style="border:2px dashed #f0c060;background:#fffcf5;">
+      <div class="card-title" style="background:#fff3d6;color:#8a6d00;">🚧 Éditeur de plan de signalisation</div>
+      <div class="card-body" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;font-size:13px;color:#5a4a20;line-height:1.6;">
+          Créez votre plan de signalisation directement : fond de carte automatique à l'adresse du chantier, panneaux belges à glisser-déposer, export en PNG à insérer dans le document Word.
+          <div id="planStatus" style="margin-top:6px;font-weight:600;font-size:12px;"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <button class="btn btn-primary" onclick="openSignEditor()" style="white-space:nowrap;background:#d4960a;">🚧 Ouvrir l'éditeur</button>
+          <button class="btn btn-secondary" onclick="checkPlans()" style="white-space:nowrap;font-size:11px;padding:6px 12px;">🔄 Rafraîchir les plans</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" id="rulesTitle2">Exigences spécifiques</div>
+      <div class="card-body" id="rulesBody2"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goStep(0)">← Modifier</button>
+      <button class="btn btn-primary" id="btnGenerate" onclick="generate()" style="min-width:260px;">📄 Générer le Word (.docx)</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── TOGGLE LABELS ───
+const toggleLabels = {
+  togRouteReg: ["Route régionale — Non", "Oui — SPW en copie"],
+  togUrgence: ["Urgence — Non", "URGENCE — Oui"],
+  togRouteBloquee: ["Route bloquée — Non", "Route bloquée — OUI"],
+  togDeviation: ["Déviation — Non", "Déviation — OUI"],
+  togDebordChaussee: ["Déborde chaussée — Non", "Déborde chaussée — Oui"],
+  togDebordTrottoir: ["Déborde trottoir — Non", "Déborde trottoir — Oui"],
+  togFeux: ["Feux impactés — Non", "Feux impactés — Oui"],
+  togArretBus: ["Arrêt de bus impacté — Non", "Arrêt de bus impacté — Oui"],
+};
+
+function toggleBtn(id) {
+  const el = document.getElementById(id);
+  const on = !el.classList.contains("on");
+  el.classList.toggle("on", on);
+  el.querySelector(".toggle-box").textContent = on ? "✓" : "";
+  if (toggleLabels[id]) el.querySelector(".toggle-label").textContent = toggleLabels[id][on ? 1 : 0];
+  checkCanProceed();
+}
+function isOn(id) { return document.getElementById(id).classList.contains("on"); }
+
+// ─── COMMUNES DATABASE ───
+const C = {
+"ans":{nom:"ANS",ok:true,plan:"Carte Google Maps",delai:"40 jours max — 15 jours possible",urgence:"Ouverture directe possible a priori",plateforme:"Plateforme GODP (ancien D2D3)",infos:["Nuisances prévues","Période des travaux"],planSign:true,formatPlan:"Planche Qualiroute",ordre:"Demande → Ville → Police & Mobilité → Bourgmestre valide",contacts:[],notes:"",redevance:null},
+"awans":{nom:"AWANS",ok:true,plan:"Non précisé",delai:"40 jours max — 30 jours",urgence:"Non précisé",plateforme:"Par mail",infos:["Toutes les informations par écrit"],planSign:true,formatPlan:"Envoi à zp.ghawa.liaison@police.belgium.eu",ordre:"Commune d'abord, zone police en copie",contacts:[{role:"Zone police (demande)",email:"zp.ghawa.dco@police.belgium.eu"},{role:"Zone police (signalisation)",email:"zp.ghawa.liaison@police.belgium.eu"}],notes:"La commune passe systématiquement avant la police.",redevance:null},
+"saint-nicolas":{nom:"SAINT-NICOLAS",ok:true,plan:"Carte Google Maps",delai:"40 jours max — 15 jours possible",urgence:"Ouverture directe possible a priori",plateforme:"Plateforme GODP (ancien D2D3)",infos:["Nuisances prévues","Période des travaux"],planSign:true,formatPlan:"Planche Qualiroute",ordre:"Demande → Ville → Police & Mobilité → Bourgmestre valide",contacts:[],notes:"",redevance:null},
+"fexhe-le-haut-clocher":{nom:"FEXHE-LE-HAUT-CLOCHER",ok:true,plan:"Carte Google Maps",delai:"15 jours à l'avance",urgence:"Oui",plateforme:"Powalco",infos:["Toutes les informations par écrit"],planSign:true,formatPlan:"Planche Qualiroute",ordre:"Administration communale gère tout (plus de commissariat)",contacts:[],notes:"Arrêté et ordonnance de police rédigés par la commune.",redevance:null},
+"flemalle":{nom:"FLÉMALLE",ok:false,plan:"Non précisé",delai:"10 à 20 jours avant",urgence:"Non précisé",plateforme:"Powalco",infos:[],planSign:false,formatPlan:"",ordre:"",contacts:[],notes:"Commune non contactée / pas de suite.",redevance:null},
+"grace-hollogne":{nom:"GRÂCE-HOLLOGNE",ok:true,plan:"Non précisé",delai:"40 jours max — 30 jours",urgence:"Non précisé",plateforme:"Par mail",infos:["Toutes les informations par écrit"],planSign:true,formatPlan:"Envoi à zp.ghawa.liaison@police.belgium.eu",ordre:"Commune d'abord, zone police en copie",contacts:[{role:"Zone police (demande)",email:"zp.ghawa.dco@police.belgium.eu"},{role:"Zone police (signalisation)",email:"zp.ghawa.liaison@police.belgium.eu"}],notes:"La commune passe systématiquement avant la police.",redevance:null},
+"seraing":{nom:"SERAING",ok:true,plan:"Screenshot Google Maps annoté avec panneaux (pas Qualiroute)",delai:"5 jours (formulaire) — insuffisant en pratique",urgence:"Ouverture possible, demande dans les 24h",plateforme:"Powalco (urgences) / Formulaire (normal)",infos:["Voir formulaire spécifique"],planSign:true,formatPlan:"Capture d'écran Maps annotée + panneaux",ordre:"",contacts:[{role:"Secrétariat travaux",email:"trav.secretariat@seraing.be"}],notes:"",redevance:null},
+"liege":{nom:"LIÈGE",ok:true,plan:"Plan similaire + arrêté spécifique (8-15j)",delai:"6 à 8 semaines — urgences régularisables 24h",urgence:"Urgences à régulariser dans les 24h",plateforme:"Powalco",infos:["Mail à maintenanceespacespublics@liege.be"],planSign:false,formatPlan:"",ordre:"Demande d'ouverture au 8e département",contacts:[{role:"Maintenance espaces publics",email:"maintenanceespacespublics@liege.be"}],notes:"Délai le plus long. Tarif communal à prévoir (montant inconnu).",redevance:"Tarif imposé par la Ville (montant non communiqué)"},
+"herstal":{nom:"HERSTAL",ok:true,plan:"Planche Qualiroute + photo",delai:"5 jours",urgence:"Ouverture directe possible a priori",plateforme:"Par mail",infos:["Dates ouverture/fermeture","Respect arrêté 16/12/2020"],planSign:true,formatPlan:"Planche Qualiroute",ordre:"",contacts:[{role:"Police administrative",email:"zp.herstal.policeadministrative@police.belgium.eu"}],notes:"",redevance:null},
+"chaudfontaine":{nom:"CHAUDFONTAINE",ok:true,plan:"Via commune — service travaux (04 361 55 51)",delai:"7 jours ouvrables",urgence:"Régularisation possible si fuite",plateforme:"Powalco",infos:["Date","Nature des travaux","Adresse","Débordement chaussée/trottoir"],planSign:true,formatPlan:"Uniquement pour nouveau raccordement",ordre:"La police ne gère rien",contacts:[{role:"Service travaux",tel:"04 361 55 51"}],notes:"",redevance:null},
+"esneux":{nom:"ESNEUX",ok:true,plan:"Police admin. — Mme Gilles (04 380 93 27) + SPW copie",delai:"7 jours ouvrables",urgence:"Non précisé",plateforme:"Powalco",infos:["Rue","Date","Nature","Maximum de précision"],planSign:true,formatPlan:"Sécurothèque + SPW copie (Mr Denis & Mr Poumet)",ordre:"La police ne gère rien",contacts:[{role:"Police administrative",nom:"Mme Gilles",tel:"04 380 93 27"}],notes:"Mettre le SPW en copie (Mr Denis & Mr Poumet).",redevance:null},
+"trooz":{nom:"TROOZ",ok:true,plan:"Formulaire en ligne ou travaux@trooz.be",delai:"15 jours à l'avance",urgence:"Régularisation possible",plateforme:"Powalco",infos:["Date","Nature des travaux","Adresse","Débordement chaussée/trottoir"],planSign:true,formatPlan:"Si conséquent ou déviation",ordre:"La police ne gère rien",contacts:[{role:"Service travaux",email:"travaux@trooz.be"}],notes:"Formulaire: https://trooz-formulaires.guichet-citoyen.be/demande-mobilite/ordonnance-de-police/",redevance:null},
+"beyne-heusay":{nom:"BEYNE-HEUSAY",ok:true,plan:"Formulaire beyne-heusay.be/mobilite après Powalco",delai:"7 jours ouvrables",urgence:"Régularisation possible",plateforme:"Powalco",infos:["Date","Nature des travaux","Adresse","Débordement chaussée/trottoir"],planSign:true,formatPlan:"Planche Qualiroute",ordre:"La police ne gère rien",contacts:[],notes:"Formulaire: https://www.beyne-heusay.be/mobilite",redevance:null},
+"blegny":{nom:"BLÉGNY",ok:true,plan:"Via commune — n° Powalco dans le mail voirie",delai:"7 jours ouvrables",urgence:"Régularisation possible",plateforme:"Powalco",infos:["Date","Nature des travaux","Adresse","Débordement chaussée/trottoir"],planSign:true,formatPlan:"Planche Qualiroute",ordre:"La police ne gère rien",contacts:[],notes:"",redevance:null},
+"fleron":{nom:"FLÉRON",ok:true,plan:"Powalco (urbanisme) + arrêté police (mobilité) — Maps/2D",delai:"Non précisé",urgence:"Régularisation possible",plateforme:"Powalco",infos:["Date","Nature des travaux","Adresse","Débordement chaussée/trottoir"],planSign:false,formatPlan:"Plan Maps/2D",ordre:"",contacts:[],notes:"",redevance:"200 € par arrêté"},
+"vise":{nom:"VISÉ",ok:true,plan:"Plateforme EAGLE BE obligatoire",delai:"10 jours (officiel: 3 mois, rarement respecté)",urgence:"Régularisation possible",plateforme:"Powalco",infos:["Date","Nature des travaux","Adresse","Débordement chaussée/trottoir"],planSign:false,formatPlan:"",ordre:"",contacts:[],notes:"Plateforme EAGLE BE obligatoire. Service travaux difficilement joignable.",redevance:null},
+"anthisnes":{nom:"ANTHISNES",ok:true,plan:"Voir commune — autorisation permanente possible",delai:"10 jours à l'avance",urgence:"Régularisation possible",plateforme:"Powalco",infos:["Date","Nature des travaux","Adresse","Débordement chaussée/trottoir"],planSign:false,formatPlan:"",ordre:"Date, lieu, signalisation",contacts:[],notes:"Possibilité d'autorisation permanente.",redevance:null},
+"comblain-au-pont":{nom:"COMBLAIN-AU-PONT",ok:true,plan:"Powalco + mail (plan à clarifier)",delai:"1 semaine à l'avance",urgence:"Régularisation possible",plateforme:"Powalco",infos:["Date","Nature des travaux","Adresse","Débordement chaussée/trottoir"],planSign:false,formatPlan:"",ordre:"",contacts:[{role:"Administration",email:"info@comblainaupont.be"}],notes:"",redevance:null},
+"hamoir":{nom:"HAMOIR",ok:false,plan:"Commune (ferme à 16h)",delai:"Non précisé",urgence:"Régularisation possible",plateforme:"Powalco",infos:["Date","Nature des travaux","Adresse","Débordement chaussée/trottoir"],planSign:false,formatPlan:"",ordre:"",contacts:[],notes:"Non contactée / pas de suite.",redevance:null},
+"ouffet":{nom:"OUFFET",ok:true,plan:"Vérifier section voirie",delai:"Non précisé",urgence:"Régularisation possible",plateforme:"Powalco",infos:["Date","Nature des travaux","Adresse","Débordement chaussée/trottoir"],planSign:false,formatPlan:"",ordre:"",contacts:[],notes:"",redevance:null},
+"huy":{nom:"HUY",ok:null,plan:"Vérifier section voirie",delai:"Non précisé",urgence:"Régularisation possible",plateforme:"Powalco",infos:["Date","Nature des travaux","Adresse","Débordement chaussée/trottoir"],planSign:false,formatPlan:"",ordre:"",contacts:[],notes:"Renvoie vers la police — statut incertain.",redevance:null},
+"marchin":{nom:"MARCHIN",ok:true,plan:"Vérifier section voirie",delai:"7 jours avant",urgence:"Régularisation possible",plateforme:"Powalco",infos:["Date","Nature des travaux","Adresse","Débordement chaussée/trottoir"],planSign:false,formatPlan:"",ordre:"",contacts:[],notes:"",redevance:null},
+"modave":{nom:"MODAVE",ok:true,plan:"Powalco + mail DG pour arrêté (plan complet)",delai:"Quelques jours",urgence:"Régularisation possible",plateforme:"Powalco + mail DG",infos:["Date","Nature des travaux","Adresse","Débordement chaussée/trottoir"],planSign:true,formatPlan:"Plan de signalisation complet",ordre:"",contacts:[{role:"Directeur général",email:"frederic.legrand@modave.be"}],notes:"",redevance:null},
+"tinlot":{nom:"TINLOT",ok:true,plan:"Vérifier section voirie",delai:"15 jours",urgence:"Régularisation possible",plateforme:"Non précisé",infos:["Date","Nature des travaux","Adresse","Débordement chaussée/trottoir"],planSign:false,formatPlan:"",ordre:"",contacts:[],notes:"",redevance:null},
+};
+
+// ─── COMMUNE LOOKUP ───
+function normalize(s){
+  if(!s)return null;
+  let n=s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
+  n=n.replace(/^commune\s+(de|d'|du)\s+/i,"").replace(/^(la|le|les)\s+/i,"");
+  if(C[n])return n;
+  const h=n.replace(/\s+/g,"-");
+  if(C[h])return h;
+  for(const k of Object.keys(C)){
+    if(k.startsWith(n)||n.startsWith(k))return k;
+    if(C[k].nom.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").includes(n))return k;
+  }
+  return null;
+}
+
+// ─── GEOCODING ───
+let geoTimer=null, currentKey=null;
+
+function buildAddress(){
+  const rue=val("rue").trim();
+  const num=val("numero").trim();
+  const cp=val("codePostal").trim();
+  const loc=val("localite").trim();
+  const parts=[];
+  if(rue){parts.push(num?rue+" "+num:rue);}
+  if(cp||loc){parts.push([cp,loc].filter(Boolean).join(" "));}
+  return parts.join(", ");
+}
+
+function onAddressChange(){
+  clearTimeout(geoTimer);
+  const rue=val("rue").trim();
+  const cp=val("codePostal").trim();
+  const loc=val("localite").trim();
+  const full=buildAddress();
+  // Show composed address
+  document.getElementById("adresseComposee").textContent=full?("→ "+full):"";
+  // Need at least rue + (cp or localité) to geocode
+  if(!rue||(!cp&&!loc)){
+    document.getElementById("geoStatus").innerHTML="";
+    document.getElementById("rulesPanel").classList.add("hidden");
+    hideMap();
+    currentKey=null;
+    checkCanProceed();
+    return;
+  }
+  document.getElementById("geoStatus").innerHTML='<div class="badge badge-info">Recherche de la commune…</div>';
+  geoTimer=setTimeout(async()=>{
+    try{
+      // Use structured Nominatim query for better precision
+      const params=new URLSearchParams({format:"json",addressdetails:"1",limit:"1",countrycodes:"be"});
+      if(rue)params.set("street",(val("numero").trim()+" "+rue).trim());
+      if(cp)params.set("postalcode",cp);
+      if(loc)params.set("city",loc);
+      const r=await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`,{headers:{"Accept-Language":"fr"}});
+      const d=await r.json();
+      if(d.length>0){
+        const a=d[0].address;
+        const lat=d[0].lat, lon=d[0].lon;
+        const commune=a.municipality||a.city||a.town||a.village||a.suburb||"";
+        const key=normalize(commune);
+        currentKey=key;
+        // Show map
+        showMap(lat,lon);
+        if(key){
+          const ru=C[key];
+          const cls=ru.ok===false?"badge-warn":ru.ok===null?"badge-warn":"badge-ok";
+          let txt=`Commune détectée : <strong>${ru.nom}</strong>`;
+          if(d[0].address.road)txt+=` — ${d[0].display_name.split(",").slice(0,2).join(",")}`;
+          if(ru.ok===false)txt+=" — ⚠ Commune non contactée / pas de suite";
+          if(ru.ok===null)txt+=" — ⚠ Statut incertain";
+          document.getElementById("geoStatus").innerHTML=`<div class="badge ${cls}">${txt}</div>`;
+          showRules(ru);
+        } else {
+          document.getElementById("geoStatus").innerHTML=`<div class="badge badge-error">Commune « ${commune} » non trouvée dans la base CILE.</div>`;
+          document.getElementById("rulesPanel").classList.add("hidden");
+        }
+      } else {
+        currentKey=null;
+        hideMap();
+        document.getElementById("geoStatus").innerHTML='<div class="badge badge-error">Adresse introuvable. Vérifiez la rue et le code postal.</div>';
+        document.getElementById("rulesPanel").classList.add("hidden");
+      }
+    }catch(e){
+      document.getElementById("geoStatus").innerHTML='<div class="badge badge-error">Erreur de connexion au géocodeur.</div>';
+      hideMap();
+    }
+    checkCanProceed();
+  },800);
+}
+
+function showRules(ru){
+  const p=document.getElementById("rulesPanel");
+  let h=`<strong>Exigences ${ru.nom} :</strong><br>`;
+  h+=`Délai : ${ru.delai} · Plateforme : ${ru.plateforme}<br>`;
+  if(ru.planSign)h+=`Plan de signalisation : ${ru.formatPlan}<br>`;
+  if(ru.redevance)h+=`<span style="color:var(--red);font-weight:600">Redevance : ${ru.redevance}</span><br>`;
+  for(const c of ru.contacts){
+    h+=`${c.role} : ${c.nom?c.nom+" — ":""}${c.email||c.tel||""}<br>`;
+  }
+  if(ru.notes)h+=`<em>${ru.notes}</em>`;
+  p.innerHTML=`<div class="rules-panel">${h}</div>`;
+  p.classList.remove("hidden");
+}
+
+function showMap(lat,lon){
+  const mc=document.getElementById("mapContainer");
+  const mf=document.getElementById("mapFrame");
+  const sf=document.getElementById("streetFrame");
+  // OSM map with marker
+  mf.src=`https://www.openstreetmap.org/export/embed.html?bbox=${lon-0.004},${lat-0.002},${Number(lon)+0.004},${Number(lat)+0.002}&layer=mapnik&marker=${lat},${lon}`;
+  // Google Maps Street View via embed (place query near coordinates)
+  const addr=buildAddress();
+  sf.src=`https://maps.google.com/maps?q=${lat},${lon}&z=18&layer=c&cbll=${lat},${lon}&cbp=11,0,0,0,0&output=svembed`;
+  mc.classList.remove("hidden");
+  mc.style.display="grid";
+}
+
+function hideMap(){
+  const mc=document.getElementById("mapContainer");
+  mc.classList.add("hidden");
+  mc.style.display="";
+  document.getElementById("mapFrame").src="";
+  document.getElementById("streetFrame").src="";
+}
+
+function val(id){return document.getElementById(id).value;}
+
+// ─── VALIDATION ───
+let validCp=true, validDates=true, validPhone=true;
+
+// Codes postaux du territoire CILE (24 communes + sections)
+const CILE_CP = {
+  "4430":["ans"],
+  "4431":["ans"], // Loncin
+  "4432":["ans"], // Alleur
+  "4340":["awans"],
+  "4341":["awans"], // Villers-l'Évêque
+  "4342":["awans"], // Hognoul
+  "4420":["saint-nicolas"],
+  "4421":["saint-nicolas"], // Tilleur
+  "4690":["fexhe-le-haut-clocher"],
+  "4691":["fexhe-le-haut-clocher"],
+  "4400":["flemalle"],
+  "4401":["flemalle"], // Engis sometimes overlaps
+  "4460":["grace-hollogne"],
+  "4461":["grace-hollogne"],
+  "4462":["grace-hollogne"],
+  "4100":["seraing"],
+  "4101":["seraing"], // Jemeppe
+  "4102":["seraing"], // Ougrée
+  "4000":["liege"],
+  "4020":["liege"],
+  "4030":["liege"],
+  "4031":["liege"], // Angleur
+  "4032":["liege"], // Chênée
+  "4040":["herstal"],
+  "4041":["herstal"], // Vottem
+  "4042":["herstal"], // Liers (also Awans area)
+  "4050":["chaudfontaine"],
+  "4051":["chaudfontaine"], // Vaux-sous-Chèvremont
+  "4052":["chaudfontaine"], // Beaufays
+  "4053":["chaudfontaine"], // Embourg
+  "4130":["esneux"],
+  "4131":["esneux"], // Tilff
+  "4870":["trooz"],
+  "4871":["trooz"], // Fraipont
+  "4610":["beyne-heusay"],
+  "4670":["blegny"],
+  "4671":["blegny"],
+  "4672":["blegny"],
+  "4620":["fleron"],
+  "4621":["fleron"], // Retinne
+  "4600":["vise"],
+  "4601":["vise"], // Argenteau
+  "4602":["vise"], // Cheratte (also Liège sometimes)
+  "4160":["anthisnes"],
+  "4170":["comblain-au-pont"],
+  "4180":["hamoir"],
+  "4590":["ouffet"],
+  "4500":["huy"],
+  "4501":["huy"],
+  "4560":["marchin"],
+  "4577":["modave"],
+  "4557":["tinlot"],
+  // Additional sections
+  "4000":["liege"],"4001":["liege"],"4002":["liege"],"4003":["liege"],"4004":["liege"],"4005":["liege"],
+  "4010":["liege"],"4011":["liege"],"4012":["liege"],"4013":["liege"],
+};
+
+function validateCodePostal(){
+  const v=val("codePostal").trim();
+  const el=document.getElementById("vCp");
+  const errMsg=el.querySelector(".error-msg");
+
+  if(!v){
+    validCp=true;
+    el.classList.remove("field-error");
+    checkCanProceed();
+    return;
+  }
+
+  // Format check
+  if(!/^\d{4}$/.test(v)){
+    validCp=false;
+    errMsg.textContent="Code postal belge à 4 chiffres requis.";
+    el.classList.add("field-error");
+    checkCanProceed();
+    return;
+  }
+
+  // Territory check
+  if(!CILE_CP[v]){
+    validCp=true; // On laisse passer mais on avertit
+    errMsg.textContent="⚠ Ce code postal ne semble pas faire partie du territoire CILE. Vérifiez l'adresse.";
+    el.classList.add("field-error");
+    checkCanProceed();
+    return;
+  }
+
+  validCp=true;
+  el.classList.remove("field-error");
+  checkCanProceed();
+}
+
+function validateDates(){
+  const d1=val("dateDebut"), d2=val("dateFin");
+  const today=new Date().toISOString().slice(0,10);
+  const el1=document.getElementById("vDateDebut");
+  const el2=document.getElementById("vDateFin");
+  const dw=document.getElementById("durationWarn");
+
+  // Date début pas dans le passé
+  let okDebut=true;
+  if(d1 && d1<today){
+    okDebut=false;
+    el1.querySelector(".error-msg").textContent="La date ne peut pas être dans le passé.";
+  }
+  el1.classList.toggle("field-error",!okDebut);
+
+  // Date fin après date début
+  let okFin=true;
+  if(d1 && d2 && d2<d1){
+    okFin=false;
+    el2.querySelector(".error-msg").textContent="La date de fin doit être après la date de début.";
+  } else if(d2 && d2<today){
+    okFin=false;
+    el2.querySelector(".error-msg").textContent="La date de fin ne peut pas être dans le passé.";
+  }
+  el2.classList.toggle("field-error",!okFin);
+
+  validDates=okDebut&&okFin;
+
+  // Duration warnings
+  dw.className="duration-warn";
+  dw.textContent="";
+  if(d1&&d2&&okDebut&&okFin){
+    const ms=new Date(d2)-new Date(d1);
+    const jours=Math.round(ms/86400000);
+    if(jours>180){
+      dw.className="duration-warn show red";
+      dw.innerHTML=`⚠ <strong>Durée estimée : ${jours} jours (${Math.round(jours/30)} mois)</strong> — Cette durée est très inhabituelle pour un chantier CILE. Veuillez vérifier que les dates de début et de fin sont correctes.`;
+    } else if(jours>15){
+      dw.className="duration-warn show orange";
+      dw.innerHTML=`⚠ <strong>Durée estimée : ${jours} jours</strong> — Cette durée est inhabituelle pour un chantier CILE. Veuillez vérifier que les dates encodées sont correctes.`;
+    }
+  }
+  checkCanProceed();
+}
+
+function validatePhone(){
+  const v=val("telResponsable").trim();
+  // Extraire les chiffres
+  const digits=v.replace(/[^0-9+]/g,"").replace(/^\+32/,"0");
+  const ok=!v || /^0\d{8,9}$/.test(digits);
+  validPhone=ok;
+  document.getElementById("vTel").classList.toggle("field-error",!ok&&v.length>3);
+  checkCanProceed();
+}
+
+function validateHoraire(){
+  const de=val("heureDe"), a=val("heureA");
+  const hw=document.getElementById("horaireWarn");
+  if(!de||!a){hw.className="duration-warn";return;}
+  const hDe=parseInt(de.split(":")[0]), mDe=parseInt(de.split(":")[1]);
+  const hA=parseInt(a.split(":")[0]), mA=parseInt(a.split(":")[1]);
+  const warns=[];
+  if(hDe<6) warns.push("Début avant 06h00");
+  if(hA>20) warns.push("Fin après 20h00");
+  if(hA<=hDe) warns.push("L'heure de fin est avant ou égale à l'heure de début");
+  if(hDe>=0&&hDe<5&&hA>=0&&hA<5) warns.push("Travaux de nuit");
+  const totalH=(hA*60+mA-hDe*60-mDe)/60;
+  if(totalH>12) warns.push("Plus de 12 heures de travail");
+
+  if(warns.length>0){
+    hw.className="duration-warn show orange";
+    hw.innerHTML=`⚠ <strong>Horaire inhabituel</strong> — ${warns.join(", ")}. Veuillez vérifier que les heures encodées sont correctes.`;
+  } else {
+    hw.className="duration-warn";
+  }
+}
+
+// Set min date on date inputs to today
+document.addEventListener("DOMContentLoaded",()=>{
+  const today=new Date().toISOString().slice(0,10);
+  document.getElementById("dateDebut").setAttribute("min",today);
+  document.getElementById("dateFin").setAttribute("min",today);
+});
+
+function getHoraire(){
+  const de=val("heureDe"),a=val("heureA");
+  if(de&&a)return de.replace(":","h")+" à "+a.replace(":","h");
+  return "Heures ouvrables";
+}
+
+function checkCanProceed(){
+  const ok=currentKey
+    && val("rue").trim()
+    && (val("codePostal").trim() || val("localite").trim())
+    && val("dateDebut")
+    && val("dateFin")
+    && val("typeIntervention")
+    && val("responsable")
+    && val("telResponsable").trim()
+    && validCp && validDates && validPhone;
+  document.getElementById("btnNext").disabled=!ok;
+}
+// Listen to required fields
+["typeIntervention","responsable"].forEach(id=>{
+  document.getElementById(id).addEventListener("input",checkCanProceed);
+  document.getElementById(id).addEventListener("change",checkCanProceed);
+});
+["dateDebut","dateFin"].forEach(id=>{
+  document.getElementById(id).addEventListener("input",validateDates);
+  document.getElementById(id).addEventListener("change",validateDates);
+});
+
+// ─── STEPS ───
+function goStep(s){
+  if(s===1 && !currentKey)return;
+  document.getElementById("step0").classList.toggle("hidden",s!==0);
+  document.getElementById("step1").classList.toggle("hidden",s!==1);
+  document.getElementById("stepBtn0").className="step-btn "+(s===0?"active":"done");
+  document.getElementById("stepBtn1").className="step-btn "+(s===1?"active":s>1?"done":"pending");
+  if(s===1){buildRecap();checkPlans();}
+}
+
+function buildRecap(){
+  const ru=C[currentKey];
+  const adresseComplete=buildAddress();
+  document.getElementById("recapTitle").textContent=`Récapitulatif — ${ru.nom}`;
+  const rows=[
+    ["Adresse",adresseComplete],
+    ["Commune",ru.nom],
+    ["N° Powalco",val("numPowalco")||"—"],
+    ["Route régionale",isOn("togRouteReg")?"Oui — SPW en copie":"Non",isOn("togRouteReg")],
+    ["Dates",val("dateDebut")+" → "+val("dateFin")],
+    ["Horaire",getHoraire()],
+    ["Intervention",val("typeIntervention")],
+    ["Nature",val("natureTravaux")||"—"],
+    ["Urgence",isOn("togUrgence")?"OUI":"Non",isOn("togUrgence")],
+    ["Route bloquée",isOn("togRouteBloquee")?"OUI":"Non",isOn("togRouteBloquee")],
+    ["Déviation",isOn("togDeviation")?"OUI":"Non",isOn("togDeviation")],
+    ["Débord chaussée",isOn("togDebordChaussee")?"Oui":"Non"],
+    ["Débord trottoir",isOn("togDebordTrottoir")?"Oui":"Non"],
+    ["Feux impactés",isOn("togFeux")?"Oui":"Non"],
+    ["Arrêt de bus",isOn("togArretBus")?"Oui":"Non"],
+    ["Responsable",val("responsable")+" — "+val("telResponsable")],
+    ["Sous-traitant",val("soustraitant")||"—"],
+  ];
+  document.getElementById("recapGrid").innerHTML=rows.map(r=>
+    `<div class="recap-row"><span class="recap-label">${r[0]} : </span><span class="recap-value${r[2]?" warn":""}">${r[1]}</span></div>`
+  ).join("");
+
+  // Detect if platform-only commune (no Word needed)
+  const isPlatform=ru.plateforme.toLowerCase().includes("godp") || ru.plateforme.toLowerCase().includes("eagle");
+  const isPowalcoOnly=ru.plateforme.toLowerCase().includes("powalco") && !ru.plateforme.toLowerCase().includes("mail");
+  const needsWord=!isPlatform; // GODP & EAGLE = platform-only, no word
+
+  // Rules panel step 2
+  document.getElementById("rulesTitle2").textContent=`Exigences spécifiques — ${ru.nom}`;
+  let h=`<div style="font-size:13.5px;line-height:1.8;color:#2c3e50">`;
+  h+=`<div><strong>Délai requis :</strong> ${ru.delai}</div>`;
+  h+=`<div><strong>Plateforme :</strong> ${ru.plateforme}</div>`;
+  h+=`<div><strong>Plan de signalisation :</strong> ${ru.planSign?`Oui — ${ru.formatPlan}`:"Vérifier exigences communales"}</div>`;
+  if(ru.ordre)h+=`<div><strong>Circuit :</strong> ${ru.ordre}</div>`;
+  if(ru.redevance)h+=`<div style="color:var(--red);font-weight:600">⚠ Redevance : ${ru.redevance}</div>`;
+  if(ru.contacts.length){
+    h+=`<div style="margin-top:6px"><strong>Contacts :</strong>`;
+    ru.contacts.forEach(c=>h+=`<div style="margin-left:12px">• ${c.role} : ${c.email||c.tel||""} ${c.nom?"("+c.nom+")":""}</div>`);
+    h+=`</div>`;
+  }
+  if(ru.notes)h+=`<div style="margin-top:6px;font-style:italic;color:#666">${ru.notes}</div>`;
+  h+=`</div>`;
+
+  if(isPlatform){
+    h+=`<div class="badge badge-warn" style="margin-top:12px;">
+      <strong>⚠ ${ru.nom} utilise la plateforme ${ru.plateforme}.</strong><br>
+      La demande doit être introduite directement sur cette plateforme — pas de document Word à générer.<br>
+      Utilisez les informations ci-dessus pour remplir la demande en ligne. Les données de ce formulaire sont reprises dans le récapitulatif ci-dessus pour copier-coller.
+    </div>`;
+  } else if(isPowalcoOnly){
+    h+=`<div class="badge badge-info" style="margin-top:12px;">
+      <strong>ℹ ${ru.nom} utilise Powalco.</strong><br>
+      Introduisez d'abord la demande sur Powalco, puis générez le document Word ci-dessous pour compléter la procédure auprès de la commune/police.
+    </div>`;
+  } else {
+    h+=`<div class="tip">💡 Le document Word contiendra un espace réservé pour insérer le plan de signalisation${isOn("togDeviation")?" et le plan de déviation":""} manuellement après génération.</div>`;
+  }
+  document.getElementById("rulesBody2").innerHTML=h;
+
+  // Show/hide generate button
+  const btnGen=document.getElementById("btnGenerate");
+  if(isPlatform){
+    btnGen.style.display="none";
+  } else {
+    btnGen.style.display="";
+  }
+
+  // ── BUILD PROCESS (Marche à suivre) ──
+  document.getElementById("processTitle").textContent=`📋 Marche à suivre — ${ru.nom}`;
+  let p="";
+  const stepStyle='style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid #eef1f5;"';
+  const numStyle='style="width:28px;height:28px;border-radius:50%;background:var(--navy-mid);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;"';
+  const contentStyle='style="flex:1;"';
+  const mailStyle='style="background:#eef3fa;padding:4px 10px;border-radius:5px;font-family:monospace;font-size:12.5px;color:var(--accent);display:inline-block;margin:3px 0;cursor:pointer;user-select:all;"';
+  const warnStyle='style="background:#fef3e0;border:1px solid #f0c060;border-radius:6px;padding:8px 12px;font-size:12.5px;color:#8a5a00;margin-top:8px;"';
+
+  let stepNum=1;
+
+  // Step 1: Powalco si applicable
+  if(ru.plateforme.toLowerCase().includes("powalco")){
+    p+=`<div ${stepStyle}><div ${numStyle}>${stepNum++}</div><div ${contentStyle}>
+      <strong>Introduire la demande sur Powalco</strong><br>
+      Encodez l'ouverture de voirie sur la plateforme Powalco avec toutes les informations du chantier. Notez le numéro de dossier Powalco.
+    </div></div>`;
+  }
+
+  // Step: GODP platform
+  if(isPlatform && ru.plateforme.toLowerCase().includes("godp")){
+    p+=`<div ${stepStyle}><div ${numStyle}>${stepNum++}</div><div ${contentStyle}>
+      <strong>Introduire la demande sur la plateforme GODP</strong><br>
+      Encodez la demande complète sur la plateforme GODP (ancien D2D3). Indiquez : nuisances prévues, période des travaux. Joignez le plan de signalisation (planche Qualiroute).
+    </div></div>`;
+  }
+
+  // Step: EAGLE BE
+  if(isPlatform && ru.plateforme.toLowerCase().includes("eagle")){
+    p+=`<div ${stepStyle}><div ${numStyle}>${stepNum++}</div><div ${contentStyle}>
+      <strong>Introduire la demande sur la plateforme EAGLE BE</strong><br>
+      Toute la procédure passe par EAGLE BE pour ${ru.nom}. Contactez le service travaux de la commune pour plus d'informations si nécessaire.
+    </div></div>`;
+  }
+
+  // Step: Formulaire spécifique
+  if(ru.notes && ru.notes.toLowerCase().includes("formulaire")){
+    p+=`<div ${stepStyle}><div ${numStyle}>${stepNum++}</div><div ${contentStyle}>
+      <strong>Remplir le formulaire communal</strong><br>
+      ${ru.notes}
+    </div></div>`;
+  }
+
+  // Step: Envoi mail si contacts
+  if(ru.contacts.length>0 && !isPlatform){
+    let mailContent=`<strong>Envoyer la demande par mail</strong><br>Destinataire(s) :`;
+    ru.contacts.forEach(c=>{
+      if(c.email)mailContent+=`<br><span ${mailStyle}>${c.email}</span> <span style="color:#666;font-size:12px;">(${c.role}${c.nom?" — "+c.nom:""})</span>`;
+      if(c.tel)mailContent+=`<br>📞 <strong>${c.tel}</strong> <span style="color:#666;font-size:12px;">(${c.role}${c.nom?" — "+c.nom:""})</span>`;
+    });
+    mailContent+=`<br><span style="font-size:12px;color:#666;">Joindre : le document Word généré + le plan de signalisation.</span>`;
+    p+=`<div ${stepStyle}><div ${numStyle}>${stepNum++}</div><div ${contentStyle}>${mailContent}</div></div>`;
+  }
+
+  // Step: Générer le Word (si pas plateforme)
+  if(!isPlatform){
+    p+=`<div ${stepStyle}><div ${numStyle}>${stepNum++}</div><div ${contentStyle}>
+      <strong>Générer le document Word</strong><br>
+      Cliquez sur le bouton ci-dessous pour télécharger le document de demande officiel. Le document est prêt à être envoyé — il ne contient aucune information interne.
+    </div></div>`;
+  }
+
+  // Step: Plan de signalisation
+  if(ru.planSign){
+    p+=`<div ${stepStyle}><div ${numStyle}>${stepNum++}</div><div ${contentStyle}>
+      <strong>Insérer le plan de signalisation</strong><br>
+      Ouvrez le document Word et insérez le plan à l'emplacement réservé.<br>
+      <strong>Format requis :</strong> ${ru.formatPlan}
+    </div></div>`;
+  }
+
+  // Step: Déviation
+  if(isOn("togDeviation")){
+    p+=`<div ${stepStyle}><div ${numStyle}>${stepNum++}</div><div ${contentStyle}>
+      <strong>Insérer le plan de déviation</strong><br>
+      Un plan de déviation est nécessaire. Insérez-le dans le document Word à l'emplacement prévu.
+    </div></div>`;
+  }
+
+  // Step: Circuit de validation
+  if(ru.ordre){
+    p+=`<div ${stepStyle}><div ${numStyle}>${stepNum++}</div><div ${contentStyle}>
+      <strong>Circuit de validation</strong><br>
+      ${ru.ordre}
+    </div></div>`;
+  }
+
+  // Step: SPW si route régionale
+  if(isOn("togRouteReg")){
+    p+=`<div ${stepStyle} style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid #eef1f5;background:#fde8e8;border-radius:6px;padding:10px 14px;margin-top:6px;">
+      <div ${numStyle} style="width:28px;height:28px;border-radius:50%;background:#c00;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">!</div>
+      <div ${contentStyle}>
+        <strong style="color:#c00;">Route régionale — SPW en copie obligatoire</strong><br>
+        Mettre en copie Mr Denis et Mr Poumet (Service Public de Wallonie) sur tous les envois.
+      </div>
+    </div>`;
+  }
+
+  // Redevance warning
+  if(ru.redevance){
+    p+=`<div ${warnStyle}>💰 <strong>Redevance :</strong> ${ru.redevance} — Prévoir le budget avant envoi.</div>`;
+  }
+
+  // Délai warning
+  p+=`<div ${warnStyle}>⏰ <strong>Délai à respecter :</strong> ${ru.delai}. Assurez-vous que la demande est envoyée dans les temps.</div>`;
+
+  document.getElementById("processBody").innerHTML=p;
+}
+
+function resetForm(){
+  ["rue","numero","codePostal","localite","numPowalco","dateDebut","dateFin","typeIntervention","natureTravaux","description","nuisances","responsable","telResponsable","soustraitant"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("heureDe").value="07:00";document.getElementById("heureA").value="17:00";
+  ["togRouteReg","togUrgence","togRouteBloquee","togDeviation","togDebordChaussee","togDebordTrottoir","togFeux","togArretBus"].forEach(id=>{
+    const el=document.getElementById(id);
+    el.classList.remove("on");
+    el.querySelector(".toggle-box").textContent="";
+    if(toggleLabels[id])el.querySelector(".toggle-label").textContent=toggleLabels[id][0];
+  });
+  document.getElementById("geoStatus").innerHTML="";
+  document.getElementById("adresseComposee").textContent="";
+  document.getElementById("rulesPanel").classList.add("hidden");
+  hideMap();
+  // Reset validation
+  ["vCp","vDateDebut","vDateFin","vTel"].forEach(id=>document.getElementById(id).classList.remove("field-error"));
+  document.getElementById("durationWarn").className="duration-warn";
+  document.getElementById("horaireWarn").className="duration-warn";
+  validCp=true;validDates=true;validPhone=true;
+  currentKey=null;
+  checkCanProceed();
+}
+
+// ─── DOCX GENERATION (JSZip — lightweight, instant) ───
+function esc(s){return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+const F='w:ascii="Calibri Light" w:hAnsi="Calibri Light"'; // body font
+const FB='w:ascii="Calibri" w:hAnsi="Calibri"'; // bold/heading font
+const NAVY="0F2B4A";
+const BLUE="1A4A7A";
+const GREY="666666";
+const LIGHT="F2F6FA";
+
+function docxRow(label,value,shaded){
+  const shade=shaded?`<w:shd w:val="clear" w:color="auto" w:fill="${LIGHT}"/>`:"";
+  return `<w:tr>
+    <w:tc><w:tcPr><w:tcW w:w="3400" w:type="dxa"/>${shade}<w:vAlign w:val="center"/></w:tcPr>
+      <w:p><w:pPr><w:spacing w:before="50" w:after="50"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="19"/><w:color w:val="${NAVY}"/><w:rFonts ${FB}/></w:rPr><w:t xml:space="preserve">${esc(label)}</w:t></w:r></w:p>
+    </w:tc>
+    <w:tc><w:tcPr><w:tcW w:w="6600" w:type="dxa"/>${shade}<w:vAlign w:val="center"/></w:tcPr>
+      <w:p><w:pPr><w:spacing w:before="50" w:after="50"/></w:pPr><w:r><w:rPr><w:sz w:val="19"/><w:rFonts ${F}/></w:rPr><w:t xml:space="preserve">${esc(value||"—")}</w:t></w:r></w:p>
+    </w:tc>
+  </w:tr>`;
+}
+
+function sectionTitle(num,text){
+  return `<w:p><w:pPr><w:spacing w:before="360" w:after="120"/><w:pBdr><w:bottom w:val="single" w:sz="6" w:color="${BLUE}"/></w:pBdr></w:pPr>
+    <w:r><w:rPr><w:b/><w:sz w:val="24"/><w:color w:val="${NAVY}"/><w:rFonts ${FB}/></w:rPr><w:t xml:space="preserve">${num}. ${esc(text)}</w:t></w:r></w:p>`;
+}
+
+function p(text,opts={}){
+  const rpr=[];
+  if(opts.bold)rpr.push("<w:b/>");
+  if(opts.italic)rpr.push("<w:i/>");
+  rpr.push(`<w:color w:val="${opts.color||"333333"}"/>`);
+  rpr.push(`<w:sz w:val="${opts.size||19}"/>`);
+  rpr.push(`<w:rFonts ${opts.bold?FB:F}/>`);
+  const jc=opts.center?`<w:jc w:val="center"/>`:"";
+  const sp=`<w:spacing w:after="${opts.after||100}" w:before="${opts.before||0}" w:line="${opts.line||276}"/>`;
+  return `<w:p><w:pPr>${jc}${sp}</w:pPr><w:r><w:rPr>${rpr.join("")}</w:rPr><w:t xml:space="preserve">${esc(text)}</w:t></w:r></w:p>`;
+}
+
+function pMulti(runs,opts={}){
+  const jc=opts.center?`<w:jc w:val="center"/>`:"";
+  const sp=`<w:spacing w:after="${opts.after||100}" w:before="${opts.before||0}"/>`;
+  const rs=runs.map(r=>{
+    const rpr=[];
+    if(r.bold)rpr.push("<w:b/>");
+    if(r.italic)rpr.push("<w:i/>");
+    rpr.push(`<w:color w:val="${r.color||"333333"}"/>`);
+    rpr.push(`<w:sz w:val="${r.size||19}"/>`);
+    rpr.push(`<w:rFonts ${r.bold?FB:F}/>`);
+    return `<w:r><w:rPr>${rpr.join("")}</w:rPr><w:t xml:space="preserve">${esc(r.t)}</w:t></w:r>`;
+  }).join("");
+  return `<w:p><w:pPr>${jc}${sp}</w:pPr>${rs}</w:p>`;
+}
+
+function hrLine(color){
+  return `<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="8" w:color="${color||NAVY}"/></w:pBdr><w:spacing w:after="200"/></w:pPr></w:p>`;
+}
+
+async function generate(){
+  const btn=document.getElementById("btnGenerate");
+  btn.disabled=true;btn.textContent="Génération en cours…";
+
+  const ru=C[currentKey];
+  const today=new Date();
+  const dateStr=today.toLocaleDateString("fr-BE",{day:"2-digit",month:"long",year:"numeric"});
+  const addr=buildAddress();
+  const urgTxt=isOn("togUrgence");
+  const durationDays=(()=>{const d1=val("dateDebut"),d2=val("dateFin");if(d1&&d2)return Math.round((new Date(d2)-new Date(d1))/86400000);return 0;})();
+  const ref=`CILE-${today.getFullYear()}-${(today.getMonth()+1).toString().padStart(2,"0")}-${String(Math.floor(Math.random()*9000)+1000)}`;
+
+  let body="";
+
+  // ══════════════════════════════════════════════
+  // HEADER BLOCK — Navy banner with CILE identity
+  // ══════════════════════════════════════════════
+  // Top thick line
+  body+=`<w:p><w:pPr><w:pBdr><w:top w:val="single" w:sz="36" w:color="${NAVY}"/></w:pBdr><w:spacing w:after="0"/></w:pPr></w:p>`;
+
+  body+=p("COMPAGNIE INTERCOMMUNALE LIÉGEOISE DES EAUX",{bold:true,size:28,color:NAVY,after:30});
+  body+=p("Rue du Canal de l'Ourthe, 8 — 4031 Angleur  |  Tél. 04 367 85 00  |  www.cile.be",{size:16,color:"888888",after:20});
+
+  body+=hrLine(BLUE);
+
+  // ══════════════════════════════════════════════
+  // TITLE BLOCK
+  // ══════════════════════════════════════════════
+  body+=p("DEMANDE D'AUTORISATION",{bold:true,size:30,color:NAVY,center:true,after:20,before:200});
+  body+=p("D'EXÉCUTION DE TRAVAUX EN VOIRIE",{bold:true,size:30,color:NAVY,center:true,after:60});
+  body+=p(`Commune de ${ru.nom}`,{bold:true,size:24,color:BLUE,center:true,after:40});
+
+  // Reference & date in a small centered table
+  body+=p(`Référence : ${ref}`,{size:17,color:"999999",center:true,after:20});
+  body+=p(`Date d'émission : ${dateStr}`,{size:17,color:"999999",center:true,after:300});
+
+  // ══════════════════════════════════════════════
+  // 1. OBJET
+  // ══════════════════════════════════════════════
+  body+=sectionTitle("1","OBJET DE LA DEMANDE");
+
+  // Format dates in French
+  function fmtDate(d){try{const[y,m,day]=d.split("-");return new Date(y,m-1,day).toLocaleDateString("fr-BE",{day:"numeric",month:"long",year:"numeric"});}catch(e){return d;}}
+  const d1=fmtDate(val("dateDebut")),d2=fmtDate(val("dateFin"));
+
+  body+=p(`La Compagnie Intercommunale Liégeoise des Eaux (CILE), en sa qualité de gestionnaire du réseau public de distribution d'eau sur le territoire de la commune de ${ru.nom}, a l'honneur de solliciter par la présente une autorisation d'exécution de travaux en voirie.`,{after:120});
+
+  body+=p(`Ces travaux, de type « ${val("typeIntervention").toLowerCase()} »${val("natureTravaux")?" ("+val("natureTravaux")+")":""}, sont prévus du ${d1} au ${d2} (${durationDays} jour${durationDays>1?"s":""}) à l'adresse suivante : ${addr}.`,{after:120});
+
+  if(urgTxt){
+    body+=p(`Cette demande revêt un caractère URGENT. ${ru.urgence || "Régularisation à effectuer dans les délais impartis"}.`,{bold:true,color:"CC0000",after:120,size:20});
+  }
+
+  body+=p(`La présente demande est établie conformément aux exigences spécifiques de la commune de ${ru.nom} et est transmise selon la procédure requise (${ru.plateforme}).`,{after:200});
+
+  // ══════════════════════════════════════════════
+  // 2. FICHE TECHNIQUE
+  // ══════════════════════════════════════════════
+  body+=sectionTitle("2","IDENTIFICATION DU CHANTIER");
+
+  const tableData=[
+    ["Demandeur","CILE — Compagnie Intercommunale Liégeoise des Eaux"],
+    ["Adresse CILE","Rue du Canal de l'Ourthe, 8 — 4031 Angleur"],
+    ["Commune concernée",ru.nom],
+    ["Adresse du chantier",addr],
+    ["Code postal / Localité",val("codePostal")+" "+val("localite")],
+    ["N° de dossier Powalco",val("numPowalco")||"À compléter"],
+    ["",""],
+    ["Date de début",d1],
+    ["Date de fin prévue",`${d2} (${durationDays} jour${durationDays>1?"s":""})`],
+    ["Horaire",getHoraire()],
+    ["Type d'intervention",val("typeIntervention")],
+    ["Nature des travaux",val("natureTravaux")||"—"],
+    ["",""],
+    ["Urgence",urgTxt?"OUI":"Non"],
+    ["Circulation interrompue",isOn("togRouteBloquee")?"OUI":"Non — circulation maintenue"],
+    ["Déviation",isOn("togDeviation")?"OUI — plan en annexe":"Non"],
+    ["Empiètement sur chaussée",isOn("togDebordChaussee")?"OUI":"Non"],
+    ["Empiètement sur trottoir",isOn("togDebordTrottoir")?"OUI":"Non"],
+    ["Feux de signalisation impactés",isOn("togFeux")?"OUI":"Non"],
+    ["Arrêt de bus impacté",isOn("togArretBus")?"OUI":"Non"],
+    ["Nuisances prévues",val("nuisances")||"Aucune nuisance particulière"],
+    ["",""],
+    ["Responsable de chantier",val("responsable")],
+    ["Téléphone",val("telResponsable")],
+    ["Entreprise sous-traitante",val("soustraitant")||"Aucune"],
+  ];
+
+  let tRows=tableData.filter(r=>r[0]||r[1]).map((r,i)=>{
+    if(!r[0]&&!r[1]) return ""; // spacer row filtered
+    return docxRow(r[0],r[1],i%2===0);
+  }).join("");
+
+  body+=`<w:tbl><w:tblPr><w:tblW w:w="10000" w:type="dxa"/><w:tblBorders>
+    <w:top w:val="single" w:sz="6" w:color="${BLUE}"/>
+    <w:bottom w:val="single" w:sz="6" w:color="${BLUE}"/>
+    <w:insideH w:val="single" w:sz="2" w:color="E0E4EA"/>
+    <w:insideV w:val="single" w:sz="2" w:color="E0E4EA"/>
+  </w:tblBorders><w:tblCellMar><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tblCellMar></w:tblPr>${tRows}</w:tbl>`;
+
+  if(ru.redevance){
+    body+=p(`Note : une redevance communale est applicable (${ru.redevance}).`,{after:120,bold:true,color:"CC0000",size:18,before:120});
+  }
+  body+=p("",{after:200});
+
+  // ══════════════════════════════════════════════
+  // 3. DESCRIPTION
+  // ══════════════════════════════════════════════
+  body+=sectionTitle("3","DESCRIPTION DE L'INTERVENTION");
+  body+=p(val("description")||"Se référer à la fiche d'identification ci-dessus pour les caractéristiques détaillées de l'intervention.",{after:200});
+
+  // ══════════════════════════════════════════════
+  // 4. IMPACT SUR LA CIRCULATION (conditionnel)
+  // ══════════════════════════════════════════════
+  let sec=4;
+  const hasImpact=isOn("togRouteBloquee")||isOn("togDeviation")||isOn("togFeux")||isOn("togArretBus");
+  if(hasImpact){
+    body+=sectionTitle(sec,"IMPACT SUR LA CIRCULATION");
+    body+=p("Les travaux entraîneront les perturbations suivantes :",{after:80});
+    if(isOn("togRouteBloquee"))body+=p("     •  Fermeture temporaire de la voirie à la circulation. Les riverains et usagers seront informés par signalisation adéquate.",{after:60});
+    if(isOn("togDeviation"))body+=p("     •  Mise en place d'une déviation. Le plan de déviation est joint en annexe au présent document.",{after:60});
+    if(isOn("togFeux"))body+=p("     •  Impact temporaire sur les feux de signalisation situés à proximité immédiate du chantier.",{after:60});
+    if(isOn("togArretBus"))body+=p("     •  Déplacement ou suppression temporaire d'un ou plusieurs arrêts de transport en commun. L'opérateur TEC sera informé.",{after:60});
+    body+=p("",{after:200});
+    sec++;
+  }
+
+  // ══════════════════════════════════════════════
+  // SIGNALISATION
+  // ══════════════════════════════════════════════
+  body+=sectionTitle(sec,"PLAN DE SIGNALISATION");
+  if(ru.planSign){
+    body+=p(`Conformément aux exigences de la commune de ${ru.nom}, le plan de signalisation est fourni ci-après au format requis : ${ru.formatPlan}.`,{after:120});
+  } else {
+    body+=p("Le plan de signalisation sera établi conformément aux exigences communales et à la réglementation en vigueur.",{after:120});
+  }
+  body+=p("",{after:60});
+
+  // Check for plans from the signalisation editor (via localStorage)
+  const plansJson=localStorage.getItem("cile_signalisation_plans");
+  const plans=plansJson?JSON.parse(plansJson):[];
+  const signPlans=plans.filter(p=>p.signCount>=0);
+
+  if(signPlans.length>0){
+    // Embed each plan as an image in the docx
+    signPlans.forEach((pl,idx)=>{
+      if(idx>0)body+=p("",{after:100});
+      body+=p(`Plan ${idx+1} — ${esc(pl.label)}`,{bold:true,size:18,color:GREY,after:60});
+      // Add image reference — stored in the zip as image files
+      body+=`<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="200"/></w:pPr>
+        <w:r><w:rPr><w:noProof/></w:rPr>
+        <w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">
+          <wp:extent cx="5400000" cy="3400000"/>
+          <wp:docPr id="${idx+10}" name="Plan${idx+1}"/>
+          <a:graphic>
+            <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+              <pic:pic>
+                <pic:nvPicPr><pic:cNvPr id="${idx+10}" name="plan${idx+1}.png"/><pic:cNvPicPr/></pic:nvPicPr>
+                <pic:blipFill><a:blip r:embed="rIdPlan${idx}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>
+                <pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="5400000" cy="3400000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>
+              </pic:pic>
+            </a:graphicData>
+          </a:graphic>
+        </wp:inline></w:drawing></w:r></w:p>`;
+    });
+  } else {
+    // No plans — show placeholder
+    body+=`<w:tbl><w:tblPr><w:tblW w:w="10000" w:type="dxa"/><w:tblBorders>
+      <w:top w:val="dashed" w:sz="4" w:color="CC0000"/><w:bottom w:val="dashed" w:sz="4" w:color="CC0000"/>
+      <w:left w:val="dashed" w:sz="4" w:color="CC0000"/><w:right w:val="dashed" w:sz="4" w:color="CC0000"/>
+    </w:tblBorders></w:tblPr>
+    <w:tr><w:tc><w:tcPr><w:tcW w:w="10000" w:type="dxa"/></w:tcPr>
+      <w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="600" w:after="600"/></w:pPr>
+      <w:r><w:rPr><w:i/><w:sz w:val="20"/><w:color w:val="CC0000"/><w:rFonts ${F}/></w:rPr>
+      <w:t xml:space="preserve">[ Insérer le plan de signalisation ici ]</w:t></w:r></w:p>
+    </w:tc></w:tr></w:tbl>`;
+  }
+  body+=p("",{after:200});
+  sec++;
+
+  // ══════════════════════════════════════════════
+  // DÉVIATION (conditionnel)
+  // ══════════════════════════════════════════════
+  if(isOn("togDeviation")){
+    body+=sectionTitle(sec,"PLAN DE DÉVIATION");
+    body+=p("Le plan de déviation ci-dessous présente l'itinéraire alternatif proposé aux usagers pendant la durée des travaux.",{after:120});
+    body+=`<w:tbl><w:tblPr><w:tblW w:w="10000" w:type="dxa"/><w:tblBorders>
+      <w:top w:val="dashed" w:sz="4" w:color="CC0000"/><w:bottom w:val="dashed" w:sz="4" w:color="CC0000"/>
+      <w:left w:val="dashed" w:sz="4" w:color="CC0000"/><w:right w:val="dashed" w:sz="4" w:color="CC0000"/>
+    </w:tblBorders></w:tblPr>
+    <w:tr><w:tc><w:tcPr><w:tcW w:w="10000" w:type="dxa"/></w:tcPr>
+      <w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="600" w:after="600"/></w:pPr>
+      <w:r><w:rPr><w:i/><w:sz w:val="20"/><w:color w:val="CC0000"/><w:rFonts ${F}/></w:rPr>
+      <w:t xml:space="preserve">[ Insérer le plan de déviation ici ]</w:t></w:r></w:p>
+    </w:tc></w:tr></w:tbl>`;
+    body+=p("",{after:200});
+    sec++;
+  }
+
+  // ══════════════════════════════════════════════
+  // ENGAGEMENT & SIGNATURE
+  // ══════════════════════════════════════════════
+  body+=sectionTitle(sec,"ENGAGEMENT ET SIGNATURE");
+  body+=p("Le demandeur s'engage à :",{after:80});
+  body+=p("     •  Respecter l'ensemble des dispositions légales et réglementaires en matière de signalisation de chantier ;",{after:40});
+  body+=p("     •  Remettre la voirie dans son état initial à l'issue des travaux ;",{after:40});
+  body+=p("     •  Informer les riverains de la nature et de la durée prévisible des travaux ;",{after:40});
+  body+=p("     •  Se conformer aux éventuelles conditions particulières imposées par la commune.",{after:200});
+
+  // Signature block
+  body+=p("",{after:200});
+  body+=hrLine("CCCCCC");
+
+  body+=pMulti([
+    {t:`Fait à Angleur, le ${dateStr}`,size:18,color:GREY}
+  ],{after:200});
+
+  body+=p("Pour la Compagnie Intercommunale Liégeoise des Eaux,",{after:40,size:18,color:GREY});
+  body+=p("",{after:300}); // space for actual signature
+  body+=p(val("responsable"),{bold:true,size:20,color:NAVY,after:20});
+  body+=p(`Service Travaux  —  ${val("telResponsable")}`,{size:17,color:GREY,after:40});
+
+  // Footer line
+  body+=`<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="36" w:color="${NAVY}"/></w:pBdr><w:spacing w:before="400" w:after="0"/></w:pPr></w:p>`;
+  body+=p(`${ref}  |  Document généré automatiquement  |  CILE — Service Travaux`,{size:14,color:"AAAAAA",center:true,after:0});
+
+  // ══════════════════════════════════════════════
+  // ASSEMBLE DOCX
+  // ══════════════════════════════════════════════
+  const documentXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+            xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+            xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+            xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
+  <w:body>
+    ${body}
+    <w:sectPr>
+      <w:pgSz w:w="11906" w:h="16838"/>
+      <w:pgMar w:top="900" w:right="1100" w:bottom="700" w:left="1100"/>
+    </w:sectPr>
+  </w:body>
+</w:document>`;
+
+  const contentTypes=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Default Extension="png" ContentType="image/png"/>
+  <Default Extension="jpg" ContentType="image/jpeg"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`;
+
+  const rels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`;
+
+  // Build word rels with image references
+  let wordRelsContent=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`;
+  if(signPlans.length>0){
+    signPlans.forEach((pl,idx)=>{
+      const ext=pl.dataUrl.startsWith("data:image/jpeg")?"jpg":"png";
+      wordRelsContent+=`\n  <Relationship Id="rIdPlan${idx}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/plan${idx}.${ext}"/>`;
+    });
+  }
+  wordRelsContent+=`\n</Relationships>`;
+
+  const zip=new JSZip();
+  zip.file("[Content_Types].xml",contentTypes);
+  zip.file("_rels/.rels",rels);
+  zip.file("word/document.xml",documentXml);
+  zip.file("word/_rels/document.xml.rels",wordRelsContent);
+
+  // Add plan images to zip
+  if(signPlans.length>0){
+    signPlans.forEach((pl,idx)=>{
+      const b64=pl.dataUrl.split(",")[1];
+      const isJpeg=pl.dataUrl.startsWith("data:image/jpeg");
+      const ext=isJpeg?"jpg":"png";
+      zip.file(`word/media/plan${idx}.${ext}`,b64,{base64:true});
+    });
+  }
+
+  const blob=await zip.generateAsync({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download=`CILE_Demande_Voirie_${ru.nom.replace(/[^a-zA-Z0-9]/g,"_")}_${ref}_${today.toISOString().slice(0,10)}.docx`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  btn.disabled=false;btn.textContent="📄 Générer le Word (.docx)";
+}
+
+function openSignEditor(){
+  const addr=buildAddress();
+  const editorUrl=`cile_editeur_signalisation.html?addr=${encodeURIComponent(addr)}`;
+  window.open(editorUrl,"_blank","width=1400,height=800");
+}
+
+function checkPlans(){
+  const el=document.getElementById("planStatus");
+  try{
+    const d=JSON.parse(localStorage.getItem("cile_signalisation_plans")||"[]");
+    if(d.length>0){
+      el.innerHTML=`✅ <span style="color:#2a7a2a;">${d.length} plan${d.length>1?"s":""} de signalisation prêt${d.length>1?"s":""} — ${d.length>1?"ils seront intégrés":"il sera intégré"} au document Word.</span>`;
+    } else {
+      el.innerHTML=`<span style="color:#8a6d00;">Aucun plan enregistré. Ouvrez l'éditeur pour créer vos plans.</span>`;
+    }
+  }catch(e){
+    el.innerHTML=`<span style="color:#8a6d00;">Aucun plan enregistré.</span>`;
+  }
+}
+</script>
+</body>
+</html>

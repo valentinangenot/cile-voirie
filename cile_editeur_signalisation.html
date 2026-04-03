@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CILE — Éditeur de plan de signalisation</title>
+<style>
+:root{--navy:#0f2b4a;--blue:#1a4a7a;--bg:#0e0e1a;--surface:#161628;--border:#252545;--text:#ddd;--dim:#667;--accent:#3a8ad8;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);font-family:'Segoe UI',sans-serif;color:var(--text);overflow:hidden;height:100vh;display:flex;flex-direction:column;}
+
+/* Header */
+.hdr{background:linear-gradient(135deg,var(--navy),var(--blue));padding:10px 20px;display:flex;align-items:center;gap:14px;flex-shrink:0;}
+.hdr h1{color:#fff;font-size:16px;font-weight:700;}
+.hdr .sub{color:rgba(255,255,255,.4);font-size:11px;margin-top:1px;}
+.hdr-spacer{flex:1;}
+.hb{padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;transition:all .15s;}
+.hb:hover{background:rgba(255,255,255,.18);}
+.hb.pri{background:#fff;color:var(--navy);border-color:#fff;}
+
+/* Main layout */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+/* Toolbar */
+.toolbar{display:flex;gap:6px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--border);align-items:center;flex-wrap:wrap;flex-shrink:0;}
+.tb{padding:5px 12px;border-radius:5px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:var(--bg);color:#aaa;transition:all .12s;}
+.tb:hover{background:#222;color:#ddd;}
+.tb.on{background:var(--blue);border-color:var(--blue);color:#fff;}
+.tb.orange{background:#d48a0a;border-color:#d48a0a;color:#fff;}
+.tb.orange:hover{background:#c07a00;}
+.tbl{color:var(--dim);font-size:11px;}
+.tbi{background:var(--bg);border:1px solid var(--border);color:#ccc;padding:4px 10px;border-radius:5px;font-size:12px;font-family:inherit;outline:none;width:280px;}
+.tbi:focus{border-color:var(--accent);}
+.tsep{width:1px;height:20px;background:var(--border);}
+
+/* View area */
+.view-area{flex:1;display:flex;overflow:hidden;}
+
+/* Left: Maps/StreetView */
+.maps-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;}
+.map-tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;}
+.map-tab{flex:1;padding:8px;text-align:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;}
+.map-tab:hover{color:#aaa;}
+.map-tab.on{color:var(--accent);border-bottom-color:var(--accent);}
+.map-frames{flex:1;position:relative;}
+.map-frames iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:none;}
+.map-frames iframe.hidden{display:none;}
+
+/* Right: editor panel */
+.editor-panel{width:420px;display:flex;flex-direction:column;border-left:1px solid var(--border);background:var(--surface);flex-shrink:0;flex-grow:1;min-width:420px;}
+
+/* Gallery */
+.gallery-header{padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.gallery{display:flex;gap:6px;padding:8px 12px;overflow-x:auto;border-bottom:1px solid var(--border);min-height:90px;align-items:center;flex-shrink:0;}
+.gallery:empty::after{content:"Aucune capture. Faites un screenshot de Maps/Street View, puis cliquez 📸 pour le charger.";color:#445;font-size:11px;font-style:italic;}
+.gal-item{width:110px;height:70px;border-radius:5px;border:2px solid var(--border);overflow:hidden;cursor:pointer;flex-shrink:0;position:relative;transition:all .12s;}
+.gal-item:hover{border-color:var(--accent);}
+.gal-item.on{border-color:#f90;box-shadow:0 0 8px rgba(255,153,0,.3);}
+.gal-item img{width:100%;height:100%;object-fit:cover;}
+.gal-item .gal-del{position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;background:rgba(200,0,0,.8);color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity .15s;}
+.gal-item:hover .gal-del{opacity:1;}
+.gal-item .gal-label{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);color:#fff;font-size:8px;padding:2px 4px;text-align:center;}
+
+/* Canvas area */
+.canvas-area{flex:1;display:flex;align-items:center;justify-content:center;overflow:auto;background:var(--bg);padding:8px;position:relative;}
+.canvas-area canvas{border:1px solid var(--border);border-radius:3px;max-width:100%;max-height:100%;cursor:crosshair;}
+.canvas-hint{position:absolute;color:#334;font-size:12px;text-align:center;line-height:2;pointer-events:none;}
+
+/* Sign tools (below canvas) */
+.sign-tools{padding:8px 12px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex-shrink:0;}
+.sign-tools .tbl{font-size:10px;}
+
+/* Bottom bar */
+.bar{padding:4px 16px;background:var(--surface);border-top:1px solid var(--border);font-size:10px;color:var(--dim);display:flex;gap:16px;flex-shrink:0;}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div>
+    <h1>🚧 Éditeur de plan de signalisation</h1>
+    <div class="sub">Captures Maps/Street View · Panneaux · Export multi-plans</div>
+  </div>
+  <div class="hdr-spacer"></div>
+  <button class="hb" onclick="exportAll()">📦 Exporter toutes les captures</button>
+</div>
+
+<div class="main">
+  <div class="toolbar">
+    <span class="tbl">Adresse :</span>
+    <input class="tbi" id="addr" placeholder="Ex: Rue Louvrex 12, 4000 Liège">
+    <button class="tb" onclick="goAddr()">Charger</button>
+    <div class="tsep"></div>
+    <label class="tb orange" style="cursor:pointer;">📸 Charger une capture <input type="file" accept="image/*" multiple style="display:none;" onchange="loadFiles(event)"></label>
+    <div class="tsep"></div>
+    <button class="tb on" id="modeCartes" onclick="setMode('cartes')">🗺️ Cartes plein écran</button>
+    <button class="tb" id="modeEditeur" onclick="setMode('editeur')">✏️ Éditeur plein écran</button>
+    <button class="tb" id="modeBoth" onclick="setMode('both')">⬛ Les deux</button>
+    <div class="tsep"></div>
+    <span class="tbl">Taille panneau :</span>
+    <input type="range" id="sR" min="20" max="160" value="60" style="width:80px;accent-color:var(--accent);" oninput="sSize=+this.value">
+    <span class="tbl">Rotation :</span>
+    <input type="range" id="rR" min="-180" max="180" value="0" style="width:60px;accent-color:var(--accent);" oninput="sRot=+this.value">
+    <button class="tb" onclick="document.getElementById('rR').value=0;sRot=0;">↺ 0°</button>
+  </div>
+
+  <div class="view-area">
+    <!-- Left: Maps -->
+    <div class="maps-panel" id="mapsPanel">
+      <div class="map-tabs">
+        <div class="map-tab on" id="tab_map" onclick="showTab('map')">🗺️ Maps</div>
+        <div class="map-tab" id="tab_sv" onclick="showTab('sv')">📷 Street View</div>
+        <div class="map-tab" id="tab_both" onclick="showTab('both')">⬛ Les deux</div>
+      </div>
+      <div class="map-frames" id="frames">
+        <iframe id="ifMap" src="about:blank"></iframe>
+        <iframe id="ifSV" src="about:blank" class="hidden"></iframe>
+      </div>
+    </div>
+
+    <!-- Right: editor -->
+    <div class="editor-panel" id="editorPanel">
+      <div class="gallery-header">
+        <span>Captures (<span id="capCount">0</span>)</span>
+        <button class="tb" style="padding:2px 8px;font-size:10px;" onclick="clearCaptures()">Tout supprimer</button>
+      </div>
+      <div class="gallery" id="gallery"></div>
+      <div class="canvas-area" id="cArea">
+        <canvas id="C" width="400" height="260"></canvas>
+        <div class="canvas-hint" id="cHint">Chargez une capture d'écran<br>via le bouton 📸 ci-dessus<br>pour éditer le plan</div>
+      </div>
+      <div class="sign-palette" style="border-top:1px solid var(--border);overflow-y:auto;max-height:200px;padding:6px;">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);padding:2px 4px 4px;">Panneaux — cliquez pour sélectionner, cliquez sur la capture pour placer</div>
+        <div id="signGrid" style="display:flex;flex-wrap:wrap;gap:3px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bar">
+    <span id="sH">Entrez une adresse → Chargez → Naviguez dans Maps/Street View → Capturez → Éditez</span>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════
+// SIGNS DATABASE (SVG placeholders — will be replaced by GitHub PNGs later)
+// To switch: set IMG_BASE and use {id:"A31", url: IMG_BASE+"A31.png", ...}
+// ═══════════════════════════
+const IMG_BASE=null;
+const SIGNS=[
+// CHANTIER
+{id:"A31",n:"Travaux",cat:"Chantier",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,8 92,88 8,88" fill="#fff" stroke="#d32f2f" stroke-width="6" stroke-linejoin="round"/><g transform="translate(50,52)"><circle r="5" cy="-18" fill="#222"/><rect x="-5" y="-12" width="10" height="11" rx="2" fill="#222"/><polygon points="-12,12 -5,0 5,0 12,12" fill="#222"/></g></svg>`},
+{id:"KC1",n:"TRAVAUX (texte)",cat:"Chantier",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80"><rect x="2" y="2" width="156" height="76" rx="8" fill="#f57f17" stroke="#222" stroke-width="3"/><text x="80" y="52" text-anchor="middle" font-size="28" font-weight="900" fill="#222" font-family="sans-serif">TRAVAUX</text></svg>`},
+{id:"CONE",n:"Cône",cat:"Chantier",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 80"><rect x="8" y="68" width="44" height="8" rx="3" fill="#333"/><polygon points="30,6 14,68 46,68" fill="#f4511e"/><rect x="18" y="22" width="24" height="7" fill="#fff" opacity=".85"/><rect x="15" y="42" width="30" height="7" fill="#fff" opacity=".85"/></svg>`},
+{id:"BARR",n:"Barrière",cat:"Chantier",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60"><rect x="4" y="10" width="112" height="40" rx="4" fill="#fff" stroke="#888" stroke-width="2"/><rect x="4" y="10" width="112" height="13" fill="#d32f2f"/><rect x="4" y="37" width="112" height="13" fill="#d32f2f"/></svg>`},
+{id:"FEU",n:"Feu chantier",cat:"Chantier",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 100"><rect x="10" y="4" width="30" height="72" rx="10" fill="#333"/><circle cx="25" cy="20" r="8" fill="#d32f2f"/><circle cx="25" cy="40" r="8" fill="#fbc02d"/><circle cx="25" cy="60" r="8" fill="#388e3c"/><rect x="20" y="76" width="10" height="20" fill="#555"/></svg>`},
+{id:"KD1",n:"Flèche →",cat:"Chantier",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80"><rect x="2" y="2" width="156" height="76" rx="8" fill="#f57f17"/><polygon points="100,12 146,40 100,68 100,54 14,54 14,26 100,26" fill="#222"/></svg>`},
+{id:"KD2",n:"← Flèche",cat:"Chantier",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80"><rect x="2" y="2" width="156" height="76" rx="8" fill="#f57f17"/><polygon points="60,12 14,40 60,68 60,54 146,54 146,26 60,26" fill="#222"/></svg>`},
+{id:"KE1",n:"Limite chantier",cat:"Chantier",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60"><rect x="2" y="2" width="116" height="56" rx="6" fill="#f57f17" stroke="#222" stroke-width="2"/><text x="60" y="24" text-anchor="middle" font-size="12" font-weight="bold" fill="#222" font-family="sans-serif">LIMITE</text><text x="60" y="44" text-anchor="middle" font-size="15" font-weight="bold" fill="#222" font-family="sans-serif">CHANTIER</text></svg>`},
+// DANGER
+{id:"A1b",n:"Virage droite",cat:"Danger",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,8 92,88 8,88" fill="#fff" stroke="#d32f2f" stroke-width="6" stroke-linejoin="round"/><path d="M35,65 Q50,30 65,65" fill="none" stroke="#222" stroke-width="5" stroke-linecap="round"/></svg>`},
+{id:"A7a",n:"Rétrécissement",cat:"Danger",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,8 92,88 8,88" fill="#fff" stroke="#d32f2f" stroke-width="6" stroke-linejoin="round"/><path d="M32,72 L42,32 58,32 68,72" fill="none" stroke="#222" stroke-width="4.5"/></svg>`},
+{id:"A14",n:"Glissant",cat:"Danger",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,8 92,88 8,88" fill="#fff" stroke="#d32f2f" stroke-width="6" stroke-linejoin="round"/><path d="M34,68 C38,56 44,64 50,52 C56,64 62,56 66,68" fill="none" stroke="#222" stroke-width="4.5"/></svg>`},
+{id:"A15",n:"Gravillons",cat:"Danger",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,8 92,88 8,88" fill="#fff" stroke="#d32f2f" stroke-width="6" stroke-linejoin="round"/><circle cx="40" cy="48" r="3.5" fill="#222"/><circle cx="56" cy="42" r="3" fill="#222"/><circle cx="48" cy="60" r="4" fill="#222"/><circle cx="62" cy="62" r="2.5" fill="#222"/></svg>`},
+{id:"A23",n:"Feux",cat:"Danger",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,8 92,88 8,88" fill="#fff" stroke="#d32f2f" stroke-width="6" stroke-linejoin="round"/><rect x="40" y="26" width="20" height="48" rx="6" fill="#333"/><circle cx="50" cy="36" r="5" fill="#d32f2f"/><circle cx="50" cy="50" r="5" fill="#fbc02d"/><circle cx="50" cy="64" r="5" fill="#388e3c"/></svg>`},
+{id:"A37",n:"Dos d'âne",cat:"Danger",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,8 92,88 8,88" fill="#fff" stroke="#d32f2f" stroke-width="6" stroke-linejoin="round"/><path d="M28,68 Q50,34 72,68" fill="none" stroke="#222" stroke-width="5"/></svg>`},
+{id:"A39",n:"Piétons",cat:"Danger",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,8 92,88 8,88" fill="#fff" stroke="#d32f2f" stroke-width="6" stroke-linejoin="round"/><circle cx="50" cy="34" r="5" fill="#222"/><line x1="50" y1="40" x2="50" y2="58" stroke="#222" stroke-width="4"/><line x1="50" y1="58" x2="40" y2="74" stroke="#222" stroke-width="3.5"/><line x1="50" y1="58" x2="60" y2="74" stroke="#222" stroke-width="3.5"/><line x1="50" y1="46" x2="38" y2="54" stroke="#222" stroke-width="3.5"/><line x1="50" y1="46" x2="62" y2="54" stroke="#222" stroke-width="3.5"/></svg>`},
+{id:"A51",n:"Danger (!)",cat:"Danger",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,8 92,88 8,88" fill="#fff" stroke="#d32f2f" stroke-width="6" stroke-linejoin="round"/><text x="50" y="72" text-anchor="middle" font-size="44" font-weight="bold" fill="#222" font-family="sans-serif">!</text></svg>`},
+// INTERDICTION
+{id:"C1",n:"Sens interdit",cat:"Interdiction",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#d32f2f"/><rect x="18" y="42" width="64" height="16" rx="3" fill="#fff"/></svg>`},
+{id:"C3",n:"Accès interdit",cat:"Interdiction",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#fff" stroke="#d32f2f" stroke-width="8"/><line x1="18" y1="18" x2="82" y2="82" stroke="#d32f2f" stroke-width="8"/></svg>`},
+{id:"C21",n:"Stat. interdit",cat:"Interdiction",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#1565c0" stroke="#d32f2f" stroke-width="8"/><line x1="18" y1="18" x2="82" y2="82" stroke="#d32f2f" stroke-width="7"/></svg>`},
+{id:"C23",n:"Arrêt+stat. int.",cat:"Interdiction",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#1565c0" stroke="#d32f2f" stroke-width="8"/><line x1="18" y1="18" x2="82" y2="82" stroke="#d32f2f" stroke-width="6"/><line x1="82" y1="18" x2="18" y2="82" stroke="#d32f2f" stroke-width="6"/></svg>`},
+{id:"C31",n:"30 km/h",cat:"Interdiction",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#fff" stroke="#d32f2f" stroke-width="8"/><text x="50" y="62" text-anchor="middle" font-size="38" font-weight="bold" fill="#222" font-family="sans-serif">30</text></svg>`},
+{id:"C33",n:"50 km/h",cat:"Interdiction",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#fff" stroke="#d32f2f" stroke-width="8"/><text x="50" y="62" text-anchor="middle" font-size="38" font-weight="bold" fill="#222" font-family="sans-serif">50</text></svg>`},
+{id:"C35",n:"Dépassement int.",cat:"Interdiction",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#fff" stroke="#d32f2f" stroke-width="8"/><rect x="24" y="36" width="16" height="28" rx="6" fill="#d32f2f"/><rect x="58" y="36" width="16" height="28" rx="6" fill="#222"/></svg>`},
+{id:"C43",n:"70 km/h",cat:"Interdiction",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#fff" stroke="#d32f2f" stroke-width="8"/><text x="50" y="62" text-anchor="middle" font-size="38" font-weight="bold" fill="#222" font-family="sans-serif">70</text></svg>`},
+// OBLIGATION
+{id:"D1",n:"Oblig. → droite",cat:"Obligation",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#1565c0"/><polygon points="34,50 62,50 62,36 82,52 62,68 62,54 34,54" fill="#fff"/></svg>`},
+{id:"D1a",n:"Oblig. ← gauche",cat:"Obligation",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#1565c0"/><polygon points="66,50 38,50 38,36 18,52 38,68 38,54 66,54" fill="#fff"/></svg>`},
+{id:"D1b",n:"Oblig. ↑ droit",cat:"Obligation",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#1565c0"/><polygon points="50,18 36,42 44,42 44,76 56,76 56,42 64,42" fill="#fff"/></svg>`},
+{id:"D4",n:"Giratoire",cat:"Obligation",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#1565c0"/><path d="M32,56 A20,20 0 1,1 56,32" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/><polygon points="60,22 60,42 74,32" fill="#fff"/></svg>`},
+// INDICATION
+{id:"F33a",n:"Déviation →",cat:"Indication",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80"><rect x="2" y="2" width="156" height="76" rx="8" fill="#f57f17"/><polygon points="100,14 144,40 100,66 100,52 16,52 16,28 100,28" fill="#fff"/></svg>`},
+{id:"F33b",n:"← Déviation",cat:"Indication",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80"><rect x="2" y="2" width="156" height="76" rx="8" fill="#f57f17"/><polygon points="60,14 16,40 60,66 60,52 144,52 144,28 60,28" fill="#fff"/></svg>`},
+{id:"F50",n:"Sens unique →",cat:"Indication",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80"><rect x="2" y="2" width="156" height="76" rx="8" fill="#1565c0"/><polygon points="100,16 144,40 100,64 100,52 16,52 16,28 100,28" fill="#fff"/></svg>`},
+{id:"F85",n:"2 sens provisoire",cat:"Indication",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="6" y="6" width="88" height="88" rx="6" fill="#1565c0"/><polygon points="50,18 36,36 44,36 44,56 56,56 56,36 64,36" fill="#fff"/><polygon points="50,82 36,64 44,64 44,44 56,44 56,64 64,64" fill="#d32f2f"/></svg>`},
+{id:"F1",n:"Route prioritaire",cat:"Indication",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="8" y="8" width="84" height="84" rx="4" fill="#fff" stroke="#222" stroke-width="3"/><rect x="26" y="26" width="48" height="48" fill="#fbc02d" transform="rotate(45 50 50)"/></svg>`},
+// PRIORITÉ
+{id:"B1",n:"Cédez passage",cat:"Priorité",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,88 8,14 92,14" fill="#fff" stroke="#d32f2f" stroke-width="7" stroke-linejoin="round"/></svg>`},
+{id:"B5",n:"Stop",cat:"Priorité",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="30,6 70,6 94,30 94,70 70,94 30,94 6,70 6,30" fill="#d32f2f" stroke="#fff" stroke-width="4"/><text x="50" y="60" text-anchor="middle" font-size="28" font-weight="bold" fill="#fff" font-family="sans-serif">STOP</text></svg>`},
+{id:"B9",n:"Priorité sens inv.",cat:"Priorité",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#fff" stroke="#d32f2f" stroke-width="7"/><rect x="38" y="24" width="12" height="52" fill="#d32f2f"/><rect x="50" y="24" width="12" height="52" fill="#222"/></svg>`},
+{id:"B10",n:"Priorité/inv.",cat:"Priorité",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80"><rect x="2" y="2" width="156" height="76" rx="8" fill="#1565c0"/><polygon points="36,14 36,66 56,40" fill="#fff"/><polygon points="124,14 124,66 104,40" fill="#d32f2f"/></svg>`},
+// ADDITIONNEL
+{id:"G50",n:"50 m",cat:"Additionnel",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60"><rect x="2" y="2" width="116" height="56" rx="6" fill="#fff" stroke="#222" stroke-width="3"/><text x="60" y="42" text-anchor="middle" font-size="28" font-weight="bold" fill="#222" font-family="sans-serif">50 m</text></svg>`},
+{id:"G100",n:"100 m",cat:"Additionnel",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60"><rect x="2" y="2" width="116" height="56" rx="6" fill="#fff" stroke="#222" stroke-width="3"/><text x="60" y="42" text-anchor="middle" font-size="26" font-weight="bold" fill="#222" font-family="sans-serif">100 m</text></svg>`},
+{id:"G200",n:"200 m",cat:"Additionnel",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60"><rect x="2" y="2" width="116" height="56" rx="6" fill="#fff" stroke="#222" stroke-width="3"/><text x="60" y="42" text-anchor="middle" font-size="26" font-weight="bold" fill="#222" font-family="sans-serif">200 m</text></svg>`},
+{id:"Gfr",n:"Flèche →",cat:"Additionnel",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60"><rect x="2" y="2" width="116" height="56" rx="6" fill="#fff" stroke="#222" stroke-width="3"/><polygon points="76,10 112,30 76,50 76,40 10,40 10,20 76,20" fill="#222"/></svg>`},
+{id:"Gfl",n:"← Flèche",cat:"Additionnel",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60"><rect x="2" y="2" width="116" height="56" rx="6" fill="#fff" stroke="#222" stroke-width="3"/><polygon points="44,10 8,30 44,50 44,40 110,40 110,20 44,20" fill="#222"/></svg>`},
+{id:"E1",n:"Stat. interdit",cat:"Stationnement",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#1565c0" stroke="#d32f2f" stroke-width="7"/><line x1="18" y1="18" x2="82" y2="82" stroke="#d32f2f" stroke-width="6"/></svg>`},
+{id:"E3",n:"Arrêt+stat. int.",cat:"Stationnement",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#1565c0" stroke="#d32f2f" stroke-width="7"/><line x1="18" y1="18" x2="82" y2="82" stroke="#d32f2f" stroke-width="5"/><line x1="82" y1="18" x2="18" y2="82" stroke="#d32f2f" stroke-width="5"/></svg>`},
+{id:"E9a",n:"Parking P",cat:"Stationnement",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="6" y="6" width="88" height="88" rx="6" fill="#1565c0"/><text x="50" y="68" text-anchor="middle" font-size="54" font-weight="bold" fill="#fff" font-family="sans-serif">P</text></svg>`},
+];
+
+const CATS=["Chantier","Danger","Interdiction","Obligation","Indication","Priorité","Additionnel","Stationnement"];
+
+// ═══════════════════════════
+// PRE-RENDER all signs to offscreen canvases
+// ═══════════════════════════
+const cache={};
+function prerender(){
+  return Promise.all(SIGNS.map(s=>new Promise(ok=>{
+    const img=new Image();
+    const blob=new Blob([s.svg],{type:"image/svg+xml;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    img.onload=()=>{
+      const c=document.createElement("canvas");
+      const vb=s.svg.match(/viewBox="([^"]+)"/);
+      let sw=100,sh=100;
+      if(vb){const p=vb[1].split(/\s+/);sw=+p[2];sh=+p[3];}
+      const sz=120,scale=Math.min(sz/sw,sz/sh);
+      c.width=sz;c.height=sz;
+      const x=c.getContext("2d");
+      x.drawImage(img,(sz-sw*scale)/2,(sz-sh*scale)/2,sw*scale,sh*scale);
+      cache[s.id]=c;
+      URL.revokeObjectURL(url);ok();
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);ok();};
+    img.src=url;
+  })));
+}
+
+// ═══════════════════════════
+// STATE
+// ═══════════════════════════
+let captures=[];
+let activeCapture=null;
+let sSize=60, sRot=0;
+let sel=null;
+let dragging=null, dragOff={x:0,y:0};
+const cvs=document.getElementById("C"), ctx=cvs.getContext("2d");
+
+// ═══════════════════════════
+// SIGN PALETTE
+// ═══════════════════════════
+function renderPalette(){
+  const g=document.getElementById("signGrid");g.innerHTML="";
+  let lastCat="";
+  SIGNS.forEach(s=>{
+    if(s.cat!==lastCat){
+      lastCat=s.cat;
+      const lbl=document.createElement("div");
+      lbl.style.cssText="width:100%;font-size:8px;font-weight:700;text-transform:uppercase;color:#556;padding:4px 2px 1px;letter-spacing:.4px;";
+      lbl.textContent=s.cat;
+      g.appendChild(lbl);
+    }
+    const d=document.createElement("div");
+    d.style.cssText=`width:36px;height:36px;border:1px solid ${sel===s.id?"#f90":"#2a2a4a"};border-radius:4px;background:${sel===s.id?"#3a2800":"#1e1e38"};cursor:pointer;padding:2px;display:flex;align-items:center;justify-content:center;transition:all .1s;`;
+    d.title=`${s.id} — ${s.n}`;
+    if(cache[s.id]){
+      const cv=document.createElement("canvas");cv.width=36;cv.height=36;
+      cv.getContext("2d").drawImage(cache[s.id],0,0,36,36);
+      cv.style.cssText="width:100%;height:100%;";
+      d.appendChild(cv);
+    }
+    d.onmouseenter=()=>{if(sel!==s.id)d.style.borderColor="#4a80c0";};
+    d.onmouseleave=()=>{if(sel!==s.id)d.style.borderColor="#2a2a4a";};
+    d.onclick=()=>{sel=s.id;renderPalette();cvs.style.cursor="copy";document.getElementById("sH").textContent=`${s.id} — ${s.n} · Cliquez sur la capture pour placer`;};
+    g.appendChild(d);
+  });
+}
+
+// ═══════════════════════════
+// MAPS
+// ═══════════════════════════
+let curTab="map";
+function showTab(tab){
+  curTab=tab;
+  document.querySelectorAll(".map-tab").forEach(t=>t.classList.remove("on"));
+  document.getElementById("tab_"+tab).classList.add("on");
+  const fm=document.getElementById("ifMap"),fs=document.getElementById("ifSV");
+  fm.classList.add("hidden");fs.classList.add("hidden");
+  fm.style.left="0";fm.style.width="100%";
+  fs.style.left="0";fs.style.width="100%";
+  if(tab==="map") fm.classList.remove("hidden");
+  else if(tab==="sv") fs.classList.remove("hidden");
+  else { fm.classList.remove("hidden");fs.classList.remove("hidden");fm.style.width="50%";fs.style.width="50%";fs.style.left="50%"; }
+}
+
+function setMode(mode){
+  const mp=document.getElementById("mapsPanel");
+  const ep=document.getElementById("editorPanel");
+  document.getElementById("modeCartes").classList.toggle("on",mode==="cartes");
+  document.getElementById("modeEditeur").classList.toggle("on",mode==="editeur");
+  document.getElementById("modeBoth").classList.toggle("on",mode==="both");
+  if(mode==="cartes"){
+    mp.style.display="";mp.style.flex="1";
+    ep.style.display="none";
+  } else if(mode==="editeur"){
+    mp.style.display="none";
+    ep.style.display="flex";ep.style.flex="1";ep.style.width="auto";ep.style.minWidth="0";
+  } else {
+    mp.style.display="";mp.style.flex="1";
+    ep.style.display="flex";ep.style.flex="";ep.style.width="420px";ep.style.minWidth="420px";
+  }
+}
+
+function goAddr(){
+  const a=document.getElementById("addr").value.trim();if(!a)return;
+  document.getElementById("sH").textContent="Géocodage…";
+  fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(a+", Belgique")}&format=json&limit=1`,{headers:{"Accept-Language":"fr"}})
+  .then(r=>r.json()).then(d=>{
+    if(!d.length){document.getElementById("sH").textContent="Introuvable.";return;}
+    const lat=d[0].lat,lon=d[0].lon;
+    document.getElementById("ifMap").src=`https://maps.google.com/maps?q=${lat},${lon}&z=18&output=embed`;
+    document.getElementById("ifSV").src=`https://maps.google.com/maps?q=${lat},${lon}&layer=c&cbll=${lat},${lon}&cbp=11,0,0,0,0&output=svembed`;
+    document.getElementById("sH").textContent="✓ Vue chargée. Faites vos captures d'écran puis chargez-les avec 📸.";
+  }).catch(()=>document.getElementById("sH").textContent="Erreur réseau.");
+}
+
+// ═══════════════════════════
+// FILE IMPORT
+// ═══════════════════════════
+function loadFiles(e){
+  Array.from(e.target.files).forEach(f=>{
+    if(!f.type.startsWith("image/"))return;
+    const r=new FileReader();
+    r.onload=()=>addCapture(r.result,f.name);
+    r.readAsDataURL(f);
+  });
+  e.target.value="";
+}
+function addCapture(dataUrl,filename){
+  const id="c"+Date.now()+""+Math.random().toString(36).slice(2,5);
+  captures.push({id, dataUrl, signs:[], label:filename?filename.replace(/\.[^.]+$/,""):`Capture ${captures.length+1}`});
+  renderGallery();selectCapture(id);
+  syncToMainForm();
+  document.getElementById("sH").textContent="✓ Capture chargée. Sélectionnez un panneau et cliquez pour placer.";
+}
+
+// ═══════════════════════════
+// GALLERY
+// ═══════════════════════════
+function renderGallery(){
+  const g=document.getElementById("gallery");g.innerHTML="";
+  document.getElementById("capCount").textContent=captures.length;
+  captures.forEach(c=>{
+    const d=document.createElement("div");d.className="gal-item"+(activeCapture===c.id?" on":"");
+    d.innerHTML=`<img src="${c.dataUrl}"><div class="gal-del" onclick="event.stopPropagation();delCapture('${c.id}')">×</div><div class="gal-label">${c.label}${c.signs.length?" · "+c.signs.length+"🪧":""}</div>`;
+    d.onclick=()=>selectCapture(c.id);
+    g.appendChild(d);
+  });
+}
+function selectCapture(id){
+  activeCapture=id;
+  const cap=captures.find(c=>c.id===id);if(!cap)return;
+  const img=new Image();
+  img.onload=()=>{cvs.width=img.width;cvs.height=img.height;document.getElementById("cHint").style.display="none";render();};
+  img.src=cap.dataUrl;
+  renderGallery();
+}
+function delCapture(id){
+  captures=captures.filter(c=>c.id!==id);
+  if(activeCapture===id){activeCapture=null;ctx.clearRect(0,0,cvs.width,cvs.height);document.getElementById("cHint").style.display="";}
+  renderGallery();syncToMainForm();
+}
+function clearCaptures(){
+  if(!captures.length||!confirm("Supprimer toutes les captures ?"))return;
+  captures=[];activeCapture=null;ctx.clearRect(0,0,cvs.width,cvs.height);
+  document.getElementById("cHint").style.display="";renderGallery();syncToMainForm();
+}
+
+// ═══════════════════════════
+// CANVAS RENDER — draws bg + signs with real pre-rendered images
+// ═══════════════════════════
+function render(){
+  const cap=captures.find(c=>c.id===activeCapture);if(!cap)return;
+  const img=new Image();
+  img.onload=()=>{
+    ctx.clearRect(0,0,cvs.width,cvs.height);
+    ctx.drawImage(img,0,0,cvs.width,cvs.height);
+    cap.signs.forEach(s=>{
+      const si=cache[s.id];if(!si)return;
+      ctx.save();ctx.translate(s.x,s.y);ctx.rotate((s.angle||0)*Math.PI/180);
+      ctx.drawImage(si,-s.size/2,-s.size/2,s.size,s.size);
+      ctx.restore();
+    });
+  };
+  img.src=cap.dataUrl;
+}
+
+// ═══════════════════════════
+// CANVAS INTERACTIONS
+// ═══════════════════════════
+function xy(e){const r=cvs.getBoundingClientRect();return{x:(e.clientX-r.left)*(cvs.width/r.width),y:(e.clientY-r.top)*(cvs.height/r.height)};}
+function hit(x,y){
+  const cap=captures.find(c=>c.id===activeCapture);if(!cap)return -1;
+  for(let i=cap.signs.length-1;i>=0;i--){const s=cap.signs[i];if(Math.abs(x-s.x)<s.size/2&&Math.abs(y-s.y)<s.size/2)return i;}return -1;
+}
+
+cvs.addEventListener("click",e=>{
+  if(!activeCapture||!sel)return;
+  const{x,y}=xy(e);
+  const cap=captures.find(c=>c.id===activeCapture);if(!cap)return;
+  cap.signs.push({id:sel,x,y,size:sSize,angle:sRot});
+  render();syncToMainForm();
+});
+cvs.addEventListener("dblclick",e=>{
+  if(!activeCapture)return;
+  const{x,y}=xy(e);const cap=captures.find(c=>c.id===activeCapture);if(!cap)return;
+  const i=hit(x,y);if(i>=0){cap.signs.splice(i,1);render();syncToMainForm();}
+});
+cvs.addEventListener("mousedown",e=>{
+  if(sel)return;if(!activeCapture)return;
+  const{x,y}=xy(e);const i=hit(x,y);
+  if(i>=0){const cap=captures.find(c=>c.id===activeCapture);dragging=i;dragOff={x:cap.signs[i].x-x,y:cap.signs[i].y-y};cvs.style.cursor="grabbing";}
+});
+cvs.addEventListener("mousemove",e=>{
+  if(dragging===null)return;
+  const{x,y}=xy(e);const cap=captures.find(c=>c.id===activeCapture);if(!cap)return;
+  cap.signs[dragging].x=x+dragOff.x;cap.signs[dragging].y=y+dragOff.y;render();
+});
+cvs.addEventListener("mouseup",()=>{if(dragging!==null){dragging=null;cvs.style.cursor=sel?"copy":"crosshair";syncToMainForm();}});
+cvs.addEventListener("contextmenu",e=>{e.preventDefault();sel=null;cvs.style.cursor="crosshair";renderPalette();});
+document.addEventListener("keydown",e=>{
+  if(e.target.tagName==="INPUT")return;
+  if(e.key==="Escape"){sel=null;cvs.style.cursor="crosshair";renderPalette();}
+  if(e.key==="z"&&(e.ctrlKey||e.metaKey)){e.preventDefault();const cap=captures.find(c=>c.id===activeCapture);if(cap&&cap.signs.length){cap.signs.pop();render();syncToMainForm();}}
+});
+
+function undo(){const cap=captures.find(c=>c.id===activeCapture);if(cap&&cap.signs.length){cap.signs.pop();render();syncToMainForm();}}
+function clearSigns(){const cap=captures.find(c=>c.id===activeCapture);if(!cap||!cap.signs.length)return;if(!confirm("Effacer les panneaux de cette capture ?"))return;cap.signs=[];render();syncToMainForm();}
+
+// ═══════════════════════════
+// EXPORT ALL — renders each capture with signs to PNG
+// ═══════════════════════════
+function renderCaptureToPNG(cap){
+  return new Promise(ok=>{
+    const img=new Image();
+    img.onload=()=>{
+      const tc=document.createElement("canvas");tc.width=img.width;tc.height=img.height;
+      const tx=tc.getContext("2d");tx.drawImage(img,0,0);
+      cap.signs.forEach(s=>{
+        const si=cache[s.id];if(!si)return;
+        tx.save();tx.translate(s.x,s.y);tx.rotate((s.angle||0)*Math.PI/180);
+        tx.drawImage(si,-s.size/2,-s.size/2,s.size,s.size);tx.restore();
+      });
+      ok(tc.toDataURL("image/png"));
+    };
+    img.src=cap.dataUrl;
+  });
+}
+
+async function exportAll(){
+  if(!captures.length){alert("Aucune capture.");return;}
+  for(let i=0;i<captures.length;i++){
+    const png=await renderCaptureToPNG(captures[i]);
+    const a=document.createElement("a");
+    a.download=`Plan_Signalisation_${i+1}_${new Date().toISOString().slice(0,10)}.png`;
+    a.href=png;a.click();
+    await new Promise(r=>setTimeout(r,300)); // small delay between downloads
+  }
+}
+
+// ═══════════════════════════
+// SYNC TO MAIN FORM via localStorage
+// The main form reads this to embed images in the Word doc
+// ═══════════════════════════
+async function syncToMainForm(){
+  try{
+    const data=[];
+    for(const cap of captures){
+      const png=await renderCaptureToPNG(cap);
+      // Compress: resize to max 800px wide for localStorage limits
+      const compressed=await compressDataUrl(png,800);
+      data.push({label:cap.label, dataUrl:compressed, signCount:cap.signs.length});
+    }
+    const json=JSON.stringify(data);
+    localStorage.setItem("cile_signalisation_plans",json);
+    console.log(`Sync OK: ${captures.length} plans, ${(json.length/1024).toFixed(0)}KB`);
+  }catch(e){
+    console.warn("Sync error:",e);
+    // If too big, try with more compression
+    try{
+      const data=[];
+      for(const cap of captures){
+        const png=await renderCaptureToPNG(cap);
+        const compressed=await compressDataUrl(png,500);
+        data.push({label:cap.label, dataUrl:compressed, signCount:cap.signs.length});
+      }
+      localStorage.setItem("cile_signalisation_plans",JSON.stringify(data));
+    }catch(e2){console.warn("Sync failed even with compression:",e2);}
+  }
+}
+
+function compressDataUrl(dataUrl,maxW){
+  return new Promise(ok=>{
+    const img=new Image();
+    img.onload=()=>{
+      let w=img.width,h=img.height;
+      if(w>maxW){h=Math.round(h*(maxW/w));w=maxW;}
+      const c=document.createElement("canvas");c.width=w;c.height=h;
+      c.getContext("2d").drawImage(img,0,0,w,h);
+      ok(c.toDataURL("image/jpeg",0.75)); // JPEG for smaller size
+    };
+    img.src=dataUrl;
+  });
+}
+
+// ═══════════════════════════
+// INIT
+// ═══════════════════════════
+const urlP=new URLSearchParams(location.search);
+if(urlP.get("addr"))document.getElementById("addr").value=urlP.get("addr");
+
+prerender().then(()=>{
+  renderPalette();
+  renderGallery();
+  render();
+  if(urlP.get("addr"))setTimeout(goAddr,300);
+  showTab("both");
+  setMode("cartes");
+});
+</script>
+</body>
+</html>
