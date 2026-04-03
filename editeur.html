@@ -146,60 +146,71 @@ body{background:var(--bg);font-family:'Segoe UI',sans-serif;color:var(--text);ov
 // SIGNS DATABASE (SVG placeholders — will be replaced by GitHub PNGs later)
 // To switch: set IMG_BASE and use {id:"A31", url: IMG_BASE+"A31.png", ...}
 // ═══════════════════════════
-const IMG_BASE = "https://valentinangenot.github.io/cile-voirie/";
+const IMG_BASE="https://valentinangenot.github.io/cile-voirie/";
 const SIGNS=[
-// CHANTIER
-{id:"A31",n:"Travaux",cat:"Chantier",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,8 92,88 8,88" fill="#fff" stroke="#d32f2f" stroke-width="6" stroke-linejoin="round"/><g transform="translate(50,52)"><circle r="5" cy="-18" fill="#222"/><rect x="-5" y="-12" width="10" height="11" rx="2" fill="#222"/><polygon points="-12,12 -5,0 5,0 12,12" fill="#222"/></g></svg>`},
-{id:"KC1",n:"TRAVAUX (texte)",cat:"Chantier",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80"><rect x="2" y="2" width="156" height="76" rx="8" fill="#f57f17" stroke="#222" stroke-width="3"/><text x="80" y="52" text-anchor="middle" font-size="28" font-weight="900" fill="#222" font-family="sans-serif">TRAVAUX</text></svg>`},
-{id:"CONE",n:"Cône",cat:"Chantier",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 80"><rect x="8" y="68" width="44" height="8" rx="3" fill="#333"/><polygon points="30,6 14,68 46,68" fill="#f4511e"/><rect x="18" y="22" width="24" height="7" fill="#fff" opacity=".85"/><rect x="15" y="42" width="30" height="7" fill="#fff" opacity=".85"/></svg>`},
-{id:"BARR",n:"Barrière",cat:"Chantier",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60"><rect x="4" y="10" width="112" height="40" rx="4" fill="#fff" stroke="#888" stroke-width="2"/><rect x="4" y="10" width="112" height="13" fill="#d32f2f"/><rect x="4" y="37" width="112" height="13" fill="#d32f2f"/></svg>`},
-{id:"FEU",n:"Feu chantier",cat:"Chantier",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 100"><rect x="10" y="4" width="30" height="72" rx="10" fill="#333"/><circle cx="25" cy="20" r="8" fill="#d32f2f"/><circle cx="25" cy="40" r="8" fill="#fbc02d"/><circle cx="25" cy="60" r="8" fill="#388e3c"/><rect x="20" y="76" width="10" height="20" fill="#555"/></svg>`},
-{id:"KD1",n:"Flèche →",cat:"Chantier",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80"><rect x="2" y="2" width="156" height="76" rx="8" fill="#f57f17"/><polygon points="100,12 146,40 100,68 100,54 14,54 14,26 100,26" fill="#222"/></svg>`},
-{id:"KD2",n:"← Flèche",cat:"Chantier",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80"><rect x="2" y="2" width="156" height="76" rx="8" fill="#f57f17"/><polygon points="60,12 14,40 60,68 60,54 146,54 146,26 60,26" fill="#222"/></svg>`},
-{id:"KE1",n:"Limite chantier",cat:"Chantier",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60"><rect x="2" y="2" width="116" height="56" rx="6" fill="#f57f17" stroke="#222" stroke-width="2"/><text x="60" y="24" text-anchor="middle" font-size="12" font-weight="bold" fill="#222" font-family="sans-serif">LIMITE</text><text x="60" y="44" text-anchor="middle" font-size="15" font-weight="bold" fill="#222" font-family="sans-serif">CHANTIER</text></svg>`},
-// DANGER
-{id:"A1b",n:"Virage droite",cat:"Danger",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,8 92,88 8,88" fill="#fff" stroke="#d32f2f" stroke-width="6" stroke-linejoin="round"/><path d="M35,65 Q50,30 65,65" fill="none" stroke="#222" stroke-width="5" stroke-linecap="round"/></svg>`},
-{id:"A7a",n:"Rétrécissement",cat:"Danger",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,8 92,88 8,88" fill="#fff" stroke="#d32f2f" stroke-width="6" stroke-linejoin="round"/><path d="M32,72 L42,32 58,32 68,72" fill="none" stroke="#222" stroke-width="4.5"/></svg>`},
-{id:"A14",n:"Glissant",cat:"Danger",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,8 92,88 8,88" fill="#fff" stroke="#d32f2f" stroke-width="6" stroke-linejoin="round"/><path d="M34,68 C38,56 44,64 50,52 C56,64 62,56 66,68" fill="none" stroke="#222" stroke-width="4.5"/></svg>`},
-{id:"A15",n:"Gravillons",cat:"Danger",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,8 92,88 8,88" fill="#fff" stroke="#d32f2f" stroke-width="6" stroke-linejoin="round"/><circle cx="40" cy="48" r="3.5" fill="#222"/><circle cx="56" cy="42" r="3" fill="#222"/><circle cx="48" cy="60" r="4" fill="#222"/><circle cx="62" cy="62" r="2.5" fill="#222"/></svg>`},
-{id:"A23",n:"Feux",cat:"Danger",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,8 92,88 8,88" fill="#fff" stroke="#d32f2f" stroke-width="6" stroke-linejoin="round"/><rect x="40" y="26" width="20" height="48" rx="6" fill="#333"/><circle cx="50" cy="36" r="5" fill="#d32f2f"/><circle cx="50" cy="50" r="5" fill="#fbc02d"/><circle cx="50" cy="64" r="5" fill="#388e3c"/></svg>`},
-{id:"A37",n:"Dos d'âne",cat:"Danger",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,8 92,88 8,88" fill="#fff" stroke="#d32f2f" stroke-width="6" stroke-linejoin="round"/><path d="M28,68 Q50,34 72,68" fill="none" stroke="#222" stroke-width="5"/></svg>`},
-{id:"A39",n:"Piétons",cat:"Danger",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,8 92,88 8,88" fill="#fff" stroke="#d32f2f" stroke-width="6" stroke-linejoin="round"/><circle cx="50" cy="34" r="5" fill="#222"/><line x1="50" y1="40" x2="50" y2="58" stroke="#222" stroke-width="4"/><line x1="50" y1="58" x2="40" y2="74" stroke="#222" stroke-width="3.5"/><line x1="50" y1="58" x2="60" y2="74" stroke="#222" stroke-width="3.5"/><line x1="50" y1="46" x2="38" y2="54" stroke="#222" stroke-width="3.5"/><line x1="50" y1="46" x2="62" y2="54" stroke="#222" stroke-width="3.5"/></svg>`},
-{id:"A51",n:"Danger (!)",cat:"Danger",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,8 92,88 8,88" fill="#fff" stroke="#d32f2f" stroke-width="6" stroke-linejoin="round"/><text x="50" y="72" text-anchor="middle" font-size="44" font-weight="bold" fill="#222" font-family="sans-serif">!</text></svg>`},
-// INTERDICTION
-{id:"C1",n:"Sens interdit",cat:"Interdiction",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#d32f2f"/><rect x="18" y="42" width="64" height="16" rx="3" fill="#fff"/></svg>`},
-{id:"C3",n:"Accès interdit",cat:"Interdiction",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#fff" stroke="#d32f2f" stroke-width="8"/><line x1="18" y1="18" x2="82" y2="82" stroke="#d32f2f" stroke-width="8"/></svg>`},
-{id:"C21",n:"Stat. interdit",cat:"Interdiction",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#1565c0" stroke="#d32f2f" stroke-width="8"/><line x1="18" y1="18" x2="82" y2="82" stroke="#d32f2f" stroke-width="7"/></svg>`},
-{id:"C23",n:"Arrêt+stat. int.",cat:"Interdiction",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#1565c0" stroke="#d32f2f" stroke-width="8"/><line x1="18" y1="18" x2="82" y2="82" stroke="#d32f2f" stroke-width="6"/><line x1="82" y1="18" x2="18" y2="82" stroke="#d32f2f" stroke-width="6"/></svg>`},
-{id:"C31",n:"30 km/h",cat:"Interdiction",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#fff" stroke="#d32f2f" stroke-width="8"/><text x="50" y="62" text-anchor="middle" font-size="38" font-weight="bold" fill="#222" font-family="sans-serif">30</text></svg>`},
-{id:"C33",n:"50 km/h",cat:"Interdiction",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#fff" stroke="#d32f2f" stroke-width="8"/><text x="50" y="62" text-anchor="middle" font-size="38" font-weight="bold" fill="#222" font-family="sans-serif">50</text></svg>`},
-{id:"C35",n:"Dépassement int.",cat:"Interdiction",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#fff" stroke="#d32f2f" stroke-width="8"/><rect x="24" y="36" width="16" height="28" rx="6" fill="#d32f2f"/><rect x="58" y="36" width="16" height="28" rx="6" fill="#222"/></svg>`},
-{id:"C43",n:"70 km/h",cat:"Interdiction",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#fff" stroke="#d32f2f" stroke-width="8"/><text x="50" y="62" text-anchor="middle" font-size="38" font-weight="bold" fill="#222" font-family="sans-serif">70</text></svg>`},
-// OBLIGATION
-{id:"D1",n:"Oblig. → droite",cat:"Obligation",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#1565c0"/><polygon points="34,50 62,50 62,36 82,52 62,68 62,54 34,54" fill="#fff"/></svg>`},
-{id:"D1a",n:"Oblig. ← gauche",cat:"Obligation",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#1565c0"/><polygon points="66,50 38,50 38,36 18,52 38,68 38,54 66,54" fill="#fff"/></svg>`},
-{id:"D1b",n:"Oblig. ↑ droit",cat:"Obligation",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#1565c0"/><polygon points="50,18 36,42 44,42 44,76 56,76 56,42 64,42" fill="#fff"/></svg>`},
-{id:"D4",n:"Giratoire",cat:"Obligation",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#1565c0"/><path d="M32,56 A20,20 0 1,1 56,32" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/><polygon points="60,22 60,42 74,32" fill="#fff"/></svg>`},
-// INDICATION
-{id:"F33a",n:"Déviation →",cat:"Indication",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80"><rect x="2" y="2" width="156" height="76" rx="8" fill="#f57f17"/><polygon points="100,14 144,40 100,66 100,52 16,52 16,28 100,28" fill="#fff"/></svg>`},
-{id:"F33b",n:"← Déviation",cat:"Indication",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80"><rect x="2" y="2" width="156" height="76" rx="8" fill="#f57f17"/><polygon points="60,14 16,40 60,66 60,52 144,52 144,28 60,28" fill="#fff"/></svg>`},
-{id:"F50",n:"Sens unique →",cat:"Indication",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80"><rect x="2" y="2" width="156" height="76" rx="8" fill="#1565c0"/><polygon points="100,16 144,40 100,64 100,52 16,52 16,28 100,28" fill="#fff"/></svg>`},
-{id:"F85",n:"2 sens provisoire",cat:"Indication",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="6" y="6" width="88" height="88" rx="6" fill="#1565c0"/><polygon points="50,18 36,36 44,36 44,56 56,56 56,36 64,36" fill="#fff"/><polygon points="50,82 36,64 44,64 44,44 56,44 56,64 64,64" fill="#d32f2f"/></svg>`},
-{id:"F1",n:"Route prioritaire",cat:"Indication",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="8" y="8" width="84" height="84" rx="4" fill="#fff" stroke="#222" stroke-width="3"/><rect x="26" y="26" width="48" height="48" fill="#fbc02d" transform="rotate(45 50 50)"/></svg>`},
-// PRIORITÉ
-{id:"B1",n:"Cédez passage",cat:"Priorité",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,88 8,14 92,14" fill="#fff" stroke="#d32f2f" stroke-width="7" stroke-linejoin="round"/></svg>`},
-{id:"B5",n:"Stop",cat:"Priorité",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="30,6 70,6 94,30 94,70 70,94 30,94 6,70 6,30" fill="#d32f2f" stroke="#fff" stroke-width="4"/><text x="50" y="60" text-anchor="middle" font-size="28" font-weight="bold" fill="#fff" font-family="sans-serif">STOP</text></svg>`},
-{id:"B9",n:"Priorité sens inv.",cat:"Priorité",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#fff" stroke="#d32f2f" stroke-width="7"/><rect x="38" y="24" width="12" height="52" fill="#d32f2f"/><rect x="50" y="24" width="12" height="52" fill="#222"/></svg>`},
-{id:"B10",n:"Priorité/inv.",cat:"Priorité",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80"><rect x="2" y="2" width="156" height="76" rx="8" fill="#1565c0"/><polygon points="36,14 36,66 56,40" fill="#fff"/><polygon points="124,14 124,66 104,40" fill="#d32f2f"/></svg>`},
-// ADDITIONNEL
-{id:"G50",n:"50 m",cat:"Additionnel",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60"><rect x="2" y="2" width="116" height="56" rx="6" fill="#fff" stroke="#222" stroke-width="3"/><text x="60" y="42" text-anchor="middle" font-size="28" font-weight="bold" fill="#222" font-family="sans-serif">50 m</text></svg>`},
-{id:"G100",n:"100 m",cat:"Additionnel",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60"><rect x="2" y="2" width="116" height="56" rx="6" fill="#fff" stroke="#222" stroke-width="3"/><text x="60" y="42" text-anchor="middle" font-size="26" font-weight="bold" fill="#222" font-family="sans-serif">100 m</text></svg>`},
-{id:"G200",n:"200 m",cat:"Additionnel",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60"><rect x="2" y="2" width="116" height="56" rx="6" fill="#fff" stroke="#222" stroke-width="3"/><text x="60" y="42" text-anchor="middle" font-size="26" font-weight="bold" fill="#222" font-family="sans-serif">200 m</text></svg>`},
-{id:"Gfr",n:"Flèche →",cat:"Additionnel",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60"><rect x="2" y="2" width="116" height="56" rx="6" fill="#fff" stroke="#222" stroke-width="3"/><polygon points="76,10 112,30 76,50 76,40 10,40 10,20 76,20" fill="#222"/></svg>`},
-{id:"Gfl",n:"← Flèche",cat:"Additionnel",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60"><rect x="2" y="2" width="116" height="56" rx="6" fill="#fff" stroke="#222" stroke-width="3"/><polygon points="44,10 8,30 44,50 44,40 110,40 110,20 44,20" fill="#222"/></svg>`},
-{id:"E1",n:"Stat. interdit",cat:"Stationnement",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#1565c0" stroke="#d32f2f" stroke-width="7"/><line x1="18" y1="18" x2="82" y2="82" stroke="#d32f2f" stroke-width="6"/></svg>`},
-{id:"E3",n:"Arrêt+stat. int.",cat:"Stationnement",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="#1565c0" stroke="#d32f2f" stroke-width="7"/><line x1="18" y1="18" x2="82" y2="82" stroke="#d32f2f" stroke-width="5"/><line x1="82" y1="18" x2="18" y2="82" stroke="#d32f2f" stroke-width="5"/></svg>`},
-{id:"E9a",n:"Parking P",cat:"Stationnement",svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="6" y="6" width="88" height="88" rx="6" fill="#1565c0"/><text x="50" y="68" text-anchor="middle" font-size="54" font-weight="bold" fill="#fff" font-family="sans-serif">P</text></svg>`},
+// ── CHANTIER ──
+{id:"A31",n:"Travaux",cat:"Chantier",svg:""},
+{id:"KC1",n:"TRAVAUX (texte)",cat:"Chantier",svg:""},
+{id:"CONE",n:"Cône",cat:"Chantier",svg:""},
+{id:"BARR",n:"Barrière",cat:"Chantier",svg:""},
+{id:"FEU",n:"Feu chantier",cat:"Chantier",svg:""},
+{id:"KD1",n:"Flèche →",cat:"Chantier",svg:""},
+{id:"KD2",n:"← Flèche",cat:"Chantier",svg:""},
+{id:"KE1",n:"Limite chantier",cat:"Chantier",svg:""},
+// ── DANGER (A) ──
+{id:"A1a",n:"Virage gauche",cat:"Danger",svg:""},
+{id:"A1b",n:"Virage droite",cat:"Danger",svg:""},
+{id:"A1c",n:"Double virage gauche",cat:"Danger",svg:""},
+{id:"A1d",n:"Double virage droite",cat:"Danger",svg:""},
+{id:"A7a",n:"Rétrécissement",cat:"Danger",svg:""},
+{id:"A11",n:"Débouché quai/berge",cat:"Danger",svg:""},
+{id:"A13",n:"Traversée d'enfants",cat:"Danger",svg:""},
+{id:"A14",n:"Chaussée glissante",cat:"Danger",svg:""},
+{id:"A15",n:"Gravillons",cat:"Danger",svg:""},
+{id:"A17",n:"Traversée de gros gibier",cat:"Danger",svg:""},
+{id:"A19",n:"Vent latéral",cat:"Danger",svg:""},
+{id:"A21",n:"Passage à niveau barrières",cat:"Danger",svg:""},
+{id:"A23",n:"Feux de signalisation",cat:"Danger",svg:""},
+{id:"A25",n:"Passage cyclistes",cat:"Danger",svg:""},
+{id:"A29",n:"Traversée de trams",cat:"Danger",svg:""},
+{id:"A37",n:"Dos d'âne",cat:"Danger",svg:""},
+{id:"A39",n:"Piétons",cat:"Danger",svg:""},
+{id:"A51",n:"Danger (!)",cat:"Danger",svg:""},
+// ── INTERDICTION (C) ──
+{id:"C1",n:"Sens interdit",cat:"Interdiction",svg:""},
+{id:"C3",n:"Accès interdit",cat:"Interdiction",svg:""},
+{id:"C21",n:"Stationnement interdit",cat:"Interdiction",svg:""},
+{id:"C23",n:"Arrêt+stat. interdits",cat:"Interdiction",svg:""},
+{id:"C31",n:"30 km/h",cat:"Interdiction",svg:""},
+{id:"C33",n:"50 km/h",cat:"Interdiction",svg:""},
+{id:"C35",n:"Dépassement interdit",cat:"Interdiction",svg:""},
+{id:"C43",n:"70 km/h",cat:"Interdiction",svg:""},
+// ── OBLIGATION (D) ──
+{id:"D1",n:"Obligatoire → droite",cat:"Obligation",svg:""},
+{id:"D1a",n:"Obligatoire ← gauche",cat:"Obligation",svg:""},
+{id:"D1b",n:"Obligatoire ↑ tout droit",cat:"Obligation",svg:""},
+{id:"D4",n:"Giratoire",cat:"Obligation",svg:""},
+// ── INDICATION (F) ──
+{id:"F1",n:"Route prioritaire",cat:"Indication",svg:""},
+{id:"F33a",n:"Déviation →",cat:"Indication",svg:""},
+{id:"F33b",n:"← Déviation",cat:"Indication",svg:""},
+{id:"F50",n:"Sens unique →",cat:"Indication",svg:""},
+{id:"F85",n:"2 sens provisoire",cat:"Indication",svg:""},
+// ── PRIORITÉ (B) ──
+{id:"B1",n:"Cédez le passage",cat:"Priorité",svg:""},
+{id:"B5",n:"Stop",cat:"Priorité",svg:""},
+{id:"B9",n:"Priorité sens inverse",cat:"Priorité",svg:""},
+{id:"B10",n:"Priorité sur inverse",cat:"Priorité",svg:""},
+// ── STATIONNEMENT (E) ──
+{id:"E1",n:"Stationnement interdit",cat:"Stationnement",svg:""},
+{id:"E3",n:"Arrêt+stat. interdits",cat:"Stationnement",svg:""},
+{id:"E9a",n:"Parking P",cat:"Stationnement",svg:""},
+// ── ADDITIONNEL (G) ──
+{id:"G50",n:"50 m",cat:"Additionnel",svg:""},
+{id:"G100",n:"100 m",cat:"Additionnel",svg:""},
+{id:"G200",n:"200 m",cat:"Additionnel",svg:""},
+{id:"Gfr",n:"Flèche →",cat:"Additionnel",svg:""},
+{id:"Gfl",n:"← Flèche",cat:"Additionnel",svg:""},
 ];
 
 const CATS=["Chantier","Danger","Interdiction","Obligation","Indication","Priorité","Additionnel","Stationnement"];
@@ -210,6 +221,32 @@ const CATS=["Chantier","Danger","Interdiction","Obligation","Indication","Priori
 const cache={};
 function prerender(){
   return Promise.all(SIGNS.map(s=>new Promise(ok=>{
+    if(IMG_BASE){
+      // Try loading PNG from GitHub first
+      const img=new Image();
+      img.crossOrigin="anonymous";
+      img.onload=()=>{
+        const c=document.createElement("canvas");c.width=120;c.height=120;
+        const scale=Math.min(120/img.width,120/img.height);
+        const dw=img.width*scale,dh=img.height*scale;
+        c.getContext("2d").drawImage(img,(120-dw)/2,(120-dh)/2,dw,dh);
+        cache[s.id]=c;
+        ok();
+      };
+      img.onerror=()=>{
+        // Fallback to SVG
+        loadSVG(s).then(ok);
+      };
+      img.src=IMG_BASE+s.id+".png";
+    } else {
+      loadSVG(s).then(ok);
+    }
+  })));
+}
+
+function loadSVG(s){
+  return new Promise(ok=>{
+    if(!s.svg){ok();return;}
     const img=new Image();
     const blob=new Blob([s.svg],{type:"image/svg+xml;charset=utf-8"});
     const url=URL.createObjectURL(blob);
@@ -220,14 +257,13 @@ function prerender(){
       if(vb){const p=vb[1].split(/\s+/);sw=+p[2];sh=+p[3];}
       const sz=120,scale=Math.min(sz/sw,sz/sh);
       c.width=sz;c.height=sz;
-      const x=c.getContext("2d");
-      x.drawImage(img,(sz-sw*scale)/2,(sz-sh*scale)/2,sw*scale,sh*scale);
+      c.getContext("2d").drawImage(img,(sz-sw*scale)/2,(sz-sh*scale)/2,sw*scale,sh*scale);
       cache[s.id]=c;
       URL.revokeObjectURL(url);ok();
     };
     img.onerror=()=>{URL.revokeObjectURL(url);ok();};
     img.src=url;
-  })));
+  });
 }
 
 // ═══════════════════════════
