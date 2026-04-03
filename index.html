@@ -6,6 +6,7 @@
 <title>CILE — Générateur de demandes voirie</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <style>
 :root {
   --navy: #0f2b4a;
@@ -359,6 +360,7 @@ textarea{resize:vertical;}
     <div class="btn-row">
       <button class="btn btn-secondary" onclick="goStep(0)">← Modifier</button>
       <button class="btn btn-primary" id="btnGenerate" onclick="generate()" style="min-width:260px;">📄 Générer le Word (.docx)</button>
+      <button class="btn btn-primary" id="btnBeyne" onclick="generateBeyne()" style="min-width:260px;background:#8a4a00;display:none;">📋 Formulaire Beyne-Heusay (PDF)</button>
     </div>
   </div>
 </div>
@@ -758,7 +760,11 @@ function goStep(s){
   document.getElementById("step1").classList.toggle("hidden",s!==1);
   document.getElementById("stepBtn0").className="step-btn "+(s===0?"active":"done");
   document.getElementById("stepBtn1").className="step-btn "+(s===1?"active":s>1?"done":"pending");
-  if(s===1){buildRecap();checkPlans();}
+  if(s===1){buildRecap();checkPlans();
+    // Show Beyne-Heusay button if CP is 4610
+    const beyneBtn=document.getElementById("btnBeyne");
+    if(beyneBtn)beyneBtn.style.display=val("codePostal")==="4610"?"":"none";
+  }
 }
 
 function buildRecap(){
@@ -1320,7 +1326,7 @@ async function generate(){
 
 function openSignEditor(){
   const addr=buildAddress();
-  const editorUrl=`editeur.html?addr=${encodeURIComponent(addr)}`;
+  const editorUrl=`cile_editeur_signalisation.html?addr=${encodeURIComponent(addr)}`;
   window.open(editorUrl,"_blank","width=1400,height=800");
 }
 
@@ -1336,6 +1342,140 @@ function checkPlans(){
   }catch(e){
     el.innerHTML=`<span style="color:#8a6d00;">Aucun plan enregistré.</span>`;
   }
+}
+
+// ═══════════════════════════════════════════
+// BEYNE-HEUSAY PDF FORM FILLING
+// Uses pdf-lib to overlay text on the original PDF
+// ═══════════════════════════════════════════
+async function generateBeyne(){
+  const btn=document.getElementById("btnBeyne");
+  btn.disabled=true;btn.textContent="⏳ Génération…";
+
+  try{
+    // Load the original PDF from GitHub
+    const pdfUrl="https://valentinangenot.github.io/cile-voirie/Beyne-Heusay_formulaire.pdf";
+    const resp=await fetch(pdfUrl);
+    if(!resp.ok)throw new Error("Impossible de charger le PDF Beyne-Heusay");
+    const pdfBytes=await resp.arrayBuffer();
+
+    const {PDFDocument, rgb, StandardFonts}=PDFLib;
+    const pdf=await PDFDocument.load(pdfBytes);
+    const page=pdf.getPages()[0];
+    const font=await pdf.embedFont(StandardFonts.Helvetica);
+    const fontBold=await pdf.embedFont(StandardFonts.HelveticaBold);
+    const H=page.getHeight();
+    const blue=rgb(0.05,0.15,0.35);
+    const black=rgb(0,0,0);
+    const sz=9;
+
+    // Helper: draw text at PDF coordinates (pdfplumber y → pdf-lib y = H - y)
+    function txt(x,y,text,options={}){
+      page.drawText(text||"",{
+        x:x,
+        y:H-y-(options.size||sz),
+        size:options.size||sz,
+        font:options.bold?fontBold:font,
+        color:options.color||blue
+      });
+    }
+
+    // Helper: draw a checkmark (✓)
+    function check(x,y){
+      txt(x+2,y-1,"X",{size:12,bold:true,color:black});
+    }
+
+    // ── Fill fields ──
+
+    // "La demande concerne" — check TRAVAUX
+    check(37,226); // ☐ TRAVAUX checkbox position
+
+    // Lieu précis
+    txt(32,268,buildAddress(),{size:10});
+
+    // Explications
+    const desc=val("typeIntervention")+(val("natureTravaux")?" — "+val("natureTravaux"):"");
+    txt(32,306,desc,{size:9});
+    txt(32,318,"Travaux de distribution d'eau — CILE",{size:8});
+
+    // Coordonnées du demandeur (left column)
+    txt(136,373,"CILE — Compagnie Intercommunale Liégeoise des Eaux",{size:7.5});
+    txt(78,407,val("responsable"));
+    txt(80,442,"Rue du Canal de l'Ourthe, 8 — 4031 Angleur");
+    txt(95,459,"4031");
+    txt(80,476,"Angleur (Liège)");
+    txt(62,493,val("telResponsable"));
+    txt(75,511,val("telResponsable"));
+    txt(74,528,val("emailResponsable")||"travaux@cile.be");
+
+    // Dates
+    txt(70,580,val("dateDebut"));
+    txt(76,592,val("heureDebut")||"08:00");
+    txt(358,580,val("dateFin"));
+    txt(352,592,val("heureFin")||"17:00");
+
+    // Panneaux — Non
+    check(39,641);
+
+    // Fait à / Le
+    const today=new Date();
+    txt(80,713,"Angleur");
+    txt(67,724,today.toLocaleDateString("fr-BE"));
+
+    // ── Add plan pages from signalisation editor ──
+    const plansJson=localStorage.getItem("cile_signalisation_plans");
+    const plans=plansJson?JSON.parse(plansJson):[];
+    if(plans.length>0){
+      for(let i=0;i<plans.length;i++){
+        const pl=plans[i];
+        // Decode base64 image
+        const imgBytes=await fetch(pl.dataUrl).then(r=>r.arrayBuffer());
+        let img;
+        if(pl.dataUrl.startsWith("data:image/png")){
+          img=await pdf.embedPng(imgBytes);
+        } else {
+          img=await pdf.embedJpg(imgBytes);
+        }
+        // Add a new A4 page
+        const annexPage=pdf.addPage([595.28,841.89]);
+        const aW=annexPage.getWidth(),aH=annexPage.getHeight();
+
+        // Title bar
+        annexPage.drawRectangle({x:0,y:aH-50,width:aW,height:50,color:rgb(0.06,0.17,0.29)});
+        annexPage.drawText("ANNEXE — Plan de signalisation",{x:30,y:aH-35,size:16,font:fontBold,color:rgb(1,1,1)});
+        annexPage.drawText(`${pl.label} — ${buildAddress()}`,{x:30,y:aH-48,size:9,font:font,color:rgb(0.8,0.8,0.8)});
+
+        // Draw image centered, with margin
+        const margin=40;
+        const maxW=aW-margin*2;
+        const maxH=aH-120; // space for title + footer
+        const scale=Math.min(maxW/img.width,maxH/img.height,1);
+        const dw=img.width*scale,dh=img.height*scale;
+        const dx=(aW-dw)/2;
+        const dy=aH-70-dh; // below title bar
+        annexPage.drawImage(img,{x:dx,y:dy,width:dw,height:dh});
+
+        // Footer
+        annexPage.drawText(`Plan ${i+1}/${plans.length} — Commune de Beyne-Heusay — CILE`,{x:30,y:20,size:8,font:font,color:rgb(0.5,0.5,0.5)});
+      }
+    }
+
+    // ── Save and download ──
+    const filledBytes=await pdf.save();
+    const blob=new Blob([filledBytes],{type:"application/pdf"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;
+    a.download=`Beyne-Heusay_Demande_Police_${today.toISOString().slice(0,10)}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+  }catch(e){
+    console.error(e);
+    alert("Erreur lors de la génération du PDF Beyne-Heusay :\n"+e.message+"\n\nAssurez-vous que le fichier Beyne-Heusay_formulaire.pdf est sur le repo GitHub.");
+  }
+
+  btn.disabled=false;btn.textContent="📋 Formulaire Beyne-Heusay (PDF)";
 }
 </script>
 </body>
