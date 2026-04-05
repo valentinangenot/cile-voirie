@@ -1354,7 +1354,7 @@ async function generateBeyne(){
 
   try{
     // Load the original PDF from GitHub
-    const pdfUrl="https://valentinangenot.github.io/cile-voirie/Beyne-Heusay_formulaire.pdf";
+    const pdfUrl="https://valentinangenot.github.io/cile-voirie/BeyneHeusayFormulaire.pdf";
     const resp=await fetch(pdfUrl);
     if(!resp.ok)throw new Error("Impossible de charger le PDF Beyne-Heusay");
     const pdfBytes=await resp.arrayBuffer();
