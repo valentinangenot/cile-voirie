@@ -1360,132 +1360,256 @@ function checkPlans(){
 }
 
 // ═══════════════════════════════════════════
-// BEYNE-HEUSAY WORD FORM GENERATION
-// Generates a .docx directly — no PDF dependency, no encoding issues
-// ═══════════════════════════════════════════
+// BEYNE-HEUSAY — Fill the original Word template
+// Loads the .docx template from GitHub, injects field values via XML manipulation, downloads
 async function generateBeyne(){
   const btn=document.getElementById("btnBeyne");
-  btn.disabled=true;btn.textContent="Generation...";
-
+  btn.disabled=true;btn.textContent="Generation en cours...";
   try{
-    const today=new Date();
-    const dateStr=today.toLocaleDateString("fr-BE");
+    // 1. Load template from GitHub
+    const tplUrl="https://valentinangenot.github.io/cile-voirie/Beyne-Heusay_formulaire.docx";
+    const resp=await fetch(tplUrl);
+    if(!resp.ok)throw new Error("Impossible de charger le template Beyne-Heusay");
+    const tplBytes=await resp.arrayBuffer();
+    const zip=await JSZip.loadAsync(tplBytes);
+
+    // 2. Read document.xml
+    let xml=await zip.file("word/document.xml").async("string");
+
+    // Helper: create a <w:r> run with text
+    function run(text,opts={}){
+      let rpr='<w:sz w:val="'+(opts.size||20)+'"/>';
+      if(opts.bold)rpr+='<w:b/>';
+      if(opts.color)rpr+='<w:color w:val="'+opts.color+'"/>';
+      return '<w:r><w:rPr>'+rpr+'</w:rPr><w:t xml:space="preserve">'+esc(text)+'</w:t></w:r>';
+    }
+
+    // Helper: inject text after a label pattern in a table cell
+    // Finds "</w:t></w:r>" after the label text and inserts a new run
+    function injectAfterLabel(label, value, opts={}){
+      // Find the label in the XML — it may be split across multiple <w:t> nodes
+      // Strategy: find the last </w:r> before the </w:p> that contains the label, and insert after it
+      const labelEsc=label.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+      // Match the paragraph containing the label (first occurrence only for left column)
+      const re=new RegExp('(<w:t[^>]*>'+labelEsc+'</w:t></w:r>)','');
+      const match=xml.match(re);
+      if(match){
+        xml=xml.replace(match[0], match[0]+run(' '+value,opts));
+        return true;
+      }
+      // Try with the label possibly ending with space+colon
+      const re2=new RegExp('(<w:t[^>]*>[^<]*'+labelEsc+'[^<]*</w:t></w:r>)','');
+      const match2=xml.match(re2);
+      if(match2){
+        xml=xml.replace(match2[0], match2[0]+run(' '+value,opts));
+        return true;
+      }
+      return false;
+    }
+
+    // 3. Fill fields
     const addr=buildAddress();
     const fullName=val("responsable").trim();
     const nameParts=fullName.split(/\s+/);
     const lastName=nameParts.length>1?nameParts.slice(-1)[0]:fullName;
     const firstName=nameParts.length>1?nameParts.slice(0,-1).join(" "):"";
     function fmtD(d){if(!d)return"";const[y,m,day]=d.split("-");return day+"/"+m+"/"+y;}
+    const today=new Date();
 
-    const BF='w:ascii="Calibri" w:hAnsi="Calibri"';
-    const NF='w:ascii="Calibri Light" w:hAnsi="Calibri Light"';
-    const NV="0F2B4A", BL="1A4A7A", GY="666666";
-
-    function bp(text,opts={}){
-      const rpr=[];
-      if(opts.bold)rpr.push("<w:b/>");
-      if(opts.italic)rpr.push("<w:i/>");
-      rpr.push('<w:color w:val="'+(opts.color||"333333")+'"/>');
-      rpr.push('<w:sz w:val="'+(opts.size||20)+'"/>');
-      rpr.push("<w:rFonts "+(opts.bold?BF:NF)+"/>");
-      const jc=opts.center?'<w:jc w:val="center"/>':"";
-      return '<w:p><w:pPr>'+jc+'<w:spacing w:after="'+(opts.after||80)+'" w:before="'+(opts.before||0)+'"/></w:pPr><w:r><w:rPr>'+rpr.join("")+'</w:rPr><w:t xml:space="preserve">'+esc(text)+'</w:t></w:r></w:p>';
-    }
-
-    function brow(label,value,shade){
-      const sh=shade?'<w:shd w:val="clear" w:color="auto" w:fill="F0F4F8"/>':"";
-      return '<w:tr><w:tc><w:tcPr><w:tcW w:w="3200" w:type="dxa"/>'+sh+'</w:tcPr><w:p><w:pPr><w:spacing w:before="40" w:after="40"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="18"/><w:color w:val="'+NV+'"/><w:rFonts '+BF+'/></w:rPr><w:t xml:space="preserve">'+esc(label)+'</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:w="6800" w:type="dxa"/>'+sh+'</w:tcPr><w:p><w:pPr><w:spacing w:before="40" w:after="40"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/><w:rFonts '+NF+'/></w:rPr><w:t xml:space="preserve">'+esc(value||"")+'</w:t></w:r></w:p></w:tc></w:tr>';
-    }
-
-    function secHead(text){
-      return '<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="4" w:color="'+BL+'"/></w:pBdr><w:spacing w:before="200" w:after="80"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="22"/><w:color w:val="'+NV+'"/><w:rFonts '+BF+'/></w:rPr><w:t xml:space="preserve">'+esc(text)+'</w:t></w:r></w:p>';
-    }
-
-    function tbl(rows){
-      let r=rows.map((row,i)=>brow(row[0],row[1],i%2===0)).join("");
-      return '<w:tbl><w:tblPr><w:tblW w:w="10000" w:type="dxa"/><w:tblBorders><w:top w:val="single" w:sz="4" w:color="'+BL+'"/><w:bottom w:val="single" w:sz="4" w:color="'+BL+'"/><w:insideH w:val="single" w:sz="2" w:color="E0E4EA"/></w:tblBorders></w:tblPr>'+r+'</w:tbl>';
-    }
-
-    let body="";
-
-    // Header
-    body+=bp("COMMUNE DE BEYNE-HEUSAY",{bold:true,size:28,color:NV,center:true,after:20,before:100});
-    body+=bp("POLICE ADMINISTRATIVE - DEMANDE D'AUTORISATION",{bold:true,size:24,color:NV,center:true,after:10});
-    body+=bp("Travaux / Occupation privative de la voie publique",{size:20,color:GY,center:true,after:40});
-    body+=bp("A solliciter aupres du Service Mobilite au minimum 6 jours ouvrables avant la date souhaitee.",{italic:true,size:17,color:"8a5a00",after:20});
-    body+=bp("Service Mobilite - Avenue de la Gare, 68 - 4610 Beyne-Heusay - Tel : 04/355.81.67 - mobilite@beyne-heusay.be",{size:16,color:GY,after:40});
-
-    // Demande concerne
-    body+=bp("La demande concerne : TRAVAUX",{bold:true,size:20,after:30});
-
-    // Lieu
-    body+=secHead("Lieu precis de l'occupation");
-    body+=bp(addr,{size:20,after:30});
-
-    // Explications
-    body+=secHead("Explications complementaires, motif et/ou nature des travaux");
-    const desc2=val("typeIntervention")+(val("natureTravaux")?" - "+val("natureTravaux"):"");
-    body+=bp(desc2,{size:20,after:10});
-    body+=bp("Travaux de distribution d'eau - CILE",{size:18,color:GY,after:10});
-    if(val("description"))body+=bp(val("description"),{size:18,color:GY,after:30});
-
-    // Coordonnees
-    body+=secHead("Coordonnees du demandeur");
-    body+=tbl([
-      ["Firme","CILE - Compagnie Intercommunale Liegeoise des Eaux"],
-      ["Nom",lastName],["Prenom",firstName],
-      ["Adresse","Rue du Canal de l'Ourthe, 8 - 4031 Angleur"],
-      ["Code postal","4031"],["Localite","Angleur (Liege)"],
-      ["Telephone",val("telResponsable")],["GSM",val("telResponsable")],
-      ["E-mail","travaux@cile.be"],
-    ]);
-
-    // Dates
-    body+=secHead("Periode des travaux");
-    body+=tbl([
-      ["Date de debut",fmtD(val("dateDebut"))],["Heure de debut",val("heureDe")||"07:00"],
-      ["Date de fin",fmtD(val("dateFin"))],["Heure de fin",val("heureA")||"17:00"],
-    ]);
-
-    // Panneaux + signature
-    body+=bp("",{after:60});
-    body+=bp("Panneaux d'interdiction de stationner : Non",{size:20,after:40});
-    body+=bp("Fait a Angleur, le "+dateStr,{size:20,after:20,before:100});
-    body+=bp("",{after:200});
-    body+=bp("Signature du demandeur",{size:18,color:GY,after:10});
-    body+=bp(fullName+" - CILE Service Travaux",{bold:true,size:20,color:NV,after:10});
-    body+=bp(val("telResponsable")+" - travaux@cile.be",{size:18,color:GY,after:40});
-
-    // Plans
-    const plansJson=localStorage.getItem("cile_signalisation_plans");
-    const plans=plansJson?JSON.parse(plansJson):[];
-    let wordRels='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">';
-
-    if(plans.length>0){
-      body+='<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
-      body+=bp("ANNEXE - Plans de signalisation",{bold:true,size:26,color:NV,center:true,after:20,before:100});
-      body+=bp(addr,{size:18,color:GY,center:true,after:40});
-      for(let i=0;i<plans.length;i++){
-        const pl=plans[i];
-        if(i>0)body+='<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
-        body+=bp("Plan "+(i+1)+" - "+pl.label,{bold:true,size:20,color:NV,after:20});
-        const cx=5760000,cy=Math.round(5760000*0.65);
-        body+='<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="100"/></w:pPr><w:r><w:rPr><w:noProof/></w:rPr><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="'+cx+'" cy="'+cy+'"/><wp:docPr id="'+(i+10)+'" name="Plan'+(i+1)+'"/><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="'+(i+10)+'" name="plan'+i+'.png"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdBP'+i+'"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+cx+'" cy="'+cy+'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>';
-        const ext=pl.dataUrl.startsWith("data:image/jpeg")?"jpg":"png";
-        wordRels+='<Relationship Id="rIdBP'+i+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/bp'+i+'.'+ext+'"/>';
+    // Lieu précis — inject after the "Lieu précis" heading paragraph
+    // The structure has "Lieu précis de l'occupation de la voie publique :" then empty paragraphs
+    // We'll add a full paragraph after the last "Lieu précis..." text
+    const lieuMarker='</w:t></w:r></w:p>';
+    const lieuSearch='occupation de la voie publique\xa0:</w:t></w:r></w:p>';
+    // Simpler: just find the third "Lieu" paragraph and add text after it
+    // Actually let's inject after the ":" of "Lieu précis..." by finding the specific pattern
+    // The paragraph P21 is the visible one — let's inject a new paragraph after it with the address
+    {
+      // Find all occurrences of "Lieu" paragraphs — we want to add after the visible form field
+      const lieuPattern = /(<w:t[^>]*>Lieu\s+pr..cis[^<]*<\/w:t><\/w:r>)/g;
+      let lastIdx=-1, lastMatch=null, count=0;
+      let m;
+      while((m=lieuPattern.exec(xml))!==null){count++;lastIdx=m.index;lastMatch=m[0];}
+      if(lastMatch){
+        // Find the end of this paragraph
+        const pEnd=xml.indexOf('</w:p>',lastIdx);
+        if(pEnd>0){
+          const insertPara='<w:p><w:pPr><w:spacing w:before="40" w:after="40"/></w:pPr>'+run(addr,{size:20,bold:true,color:'1A4A7A'})+'</w:p>';
+          xml=xml.slice(0,pEnd+6)+insertPara+xml.slice(pEnd+6);
+        }
       }
     }
-    wordRels+='</Relationships>';
 
-    const docXml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><w:body>'+body+'<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="800" w:right="900" w:bottom="600" w:left="900"/></w:sectPr></w:body></w:document>';
+    // Explications — add after the "Explications" heading
+    {
+      const explPattern=/(<w:t[^>]*>Explications compl..mentaires[^<]*<\/w:t><\/w:r>)/g;
+      let lastIdx=-1,lastMatch=null,m;
+      while((m=explPattern.exec(xml))!==null){lastIdx=m.index;lastMatch=m[0];}
+      if(lastMatch){
+        const pEnd=xml.indexOf('</w:p>',lastIdx);
+        if(pEnd>0){
+          const desc=val("typeIntervention")+(val("natureTravaux")?" - "+val("natureTravaux"):"");
+          let insertP='<w:p><w:pPr><w:spacing w:before="40" w:after="20"/></w:pPr>'+run(desc,{size:18})+'</w:p>';
+          insertP+='<w:p><w:pPr><w:spacing w:before="0" w:after="40"/></w:pPr>'+run("Travaux de distribution d'eau - CILE",{size:16,color:'666666'})+'</w:p>';
+          if(val("description")){
+            insertP+='<w:p><w:pPr><w:spacing w:before="0" w:after="40"/></w:pPr>'+run(val("description"),{size:16,color:'666666'})+'</w:p>';
+          }
+          xml=xml.slice(0,pEnd+6)+insertP+xml.slice(pEnd+6);
+        }
+      }
+    }
 
-    const zip=new JSZip();
-    zip.file("[Content_Types].xml",'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Default Extension="jpg" ContentType="image/jpeg"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
-    zip.file("_rels/.rels",'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
-    zip.file("word/document.xml",docXml);
-    zip.file("word/_rels/document.xml.rels",wordRels);
-    if(plans.length>0){plans.forEach((pl,i)=>{const ext=pl.dataUrl.startsWith("data:image/jpeg")?"jpg":"png";zip.file("word/media/bp"+i+"."+ext,pl.dataUrl.split(",")[1],{base64:true});});}
+    // Table 2 — Coordonnées du demandeur (left column = first occurrence of each label)
+    // Firme
+    injectAfterLabel(':','CILE - Cie Intercommunale Liegeoise des Eaux');
+    // Actually, let's be more specific — find the FIRST occurrence of each label
 
+    // For table cells, the pattern is: "Nom" underlined + " " + ":" then we add text
+    // The colon is in a separate <w:r>, so after ":" we inject
+    // Let's use a targeted approach: find each label's ":" and append
+
+    // Coordonnées — these are in Table 2, left column (first occurrence of each)
+    const coordFields=[
+      {label:"Firme", value:"CILE - Cie Intercommunale Liegeoise des Eaux"},
+      {label:"Nom", value:lastName},
+      {label:"Pr..nom", value:firstName},
+      {label:"Adresse", value:"Rue du Canal de l'Ourthe, 8 - 4031 Angleur"},
+      {label:"Code postal", value:"4031"},
+      {label:"Localit", value:"Angleur (Liege)"},
+      {label:"T..l", value:val("telResponsable")},
+      {label:"GSM", value:val("telResponsable")},
+      {label:"e-mail", value:"travaux@cile.be"},
+    ];
+
+    // For each field, find the FIRST table cell containing the label, find the last </w:r> in it, and inject after
+    coordFields.forEach(f=>{
+      const re=new RegExp('(<w:t[^>]*>'+f.label+'</w:t></w:r>)(.*?)(<w:t[^>]*>\\s*:?\\s*</w:t></w:r>)');
+      const m2=xml.match(re);
+      if(m2){
+        xml=xml.replace(m2[0], m2[0]+run(' '+f.value,{size:18}));
+      } else {
+        // Fallback: simpler pattern — just find "Label" text and ":" separately
+        const re2=new RegExp('(<w:t[^>]*>[^<]*'+f.label+'[^<]*</w:t></w:r>[^]*?<w:t[^>]*>\\s*:?[^<]*</w:t></w:r>)');
+        const m3=xml.match(re2);
+        if(m3){
+          xml=xml.replace(m3[0], m3[0]+run(' '+f.value,{size:18}));
+        }
+      }
+    });
+
+    // Dates — Table 3
+    // "date :" -> inject date, "heure :" -> inject time
+    // First occurrence = début, we need to handle both columns
+    {
+      // Find table 3 — contains "Début des travaux"
+      const tbl3Start=xml.indexOf('Début des travaux');
+      if(tbl3Start>0){
+        // Work on the table section only
+        const tblStart=xml.lastIndexOf('<w:tbl',tbl3Start);
+        const tblEnd=xml.indexOf('</w:tbl>',tbl3Start)+8;
+        let tblXml=xml.slice(tblStart,tblEnd);
+
+        // Left column: date de début, heure de début
+        // Right column: date de fin, heure de fin
+        // Find "date :" and inject after the colon
+        const dateDebut=fmtD(val("dateDebut"));
+        const dateFin=fmtD(val("dateFin"));
+        const hDe=val("heureDe")||"07:00";
+        const hA=val("heureA")||"17:00";
+
+        // The cells contain multiple paragraphs: "date :" and "heure :" in left cell, same in right cell
+        // Left cell is first <w:tc>, right cell is second <w:tc> in row 1
+        // Let's just do simple sequential replacements
+        // First "date" -> début, second "date**" -> fin
+        tblXml=tblXml.replace(
+          /(<w:t[^>]*>date<\/w:t><\/w:r>)(.*?)(<w:t[^>]*>\s*:<\/w:t><\/w:r>)/,
+          '$1$2$3'+run(' '+dateDebut,{size:20,bold:true})
+        );
+        // First "heure" -> début
+        tblXml=tblXml.replace(
+          /(<w:t[^>]*>heure<\/w:t><\/w:r>)(.*?)(<w:t[^>]*>\s*:<\/w:t><\/w:r>)/,
+          '$1$2$3'+run(' '+hDe,{size:20,bold:true})
+        );
+        // "date**" -> fin
+        tblXml=tblXml.replace(
+          /(<w:t[^>]*>date\*\*<\/w:t><\/w:r>)(.*?)(<w:t[^>]*>\s*:<\/w:t><\/w:r>)/,
+          '$1$2$3'+run(' '+dateFin,{size:20,bold:true})
+        );
+        // Second "heure" -> fin
+        tblXml=tblXml.replace(
+          /(<w:t[^>]*>heure<\/w:t><\/w:r>)(.*?)(<w:t[^>]*>\s*:<\/w:t><\/w:r>)/,
+          '$1$2$3'+run(' '+hA,{size:20,bold:true})
+        );
+
+        xml=xml.slice(0,tblStart)+tblXml+xml.slice(tblEnd);
+      }
+    }
+
+    // "Fait à Le" — inject city and date
+    {
+      // Pattern: "à " then "Le" — inject "Angleur" after "à" and date after "Le"
+      xml=xml.replace(
+        /(<w:t[^>]*>à\s*<\/w:t><\/w:r>)/,
+        '$1'+run('Angleur ',{size:20})
+      );
+      xml=xml.replace(
+        /(<w:t[^>]*>Le<\/w:t><\/w:r>)/,
+        '$1'+run(' '+today.toLocaleDateString("fr-BE"),{size:20})
+      );
+    }
+
+    // 4. Save modified document.xml
+    zip.file("word/document.xml",xml);
+
+    // 5. Add signalisation plans as extra pages
+    const plansJson=localStorage.getItem("cile_signalisation_plans");
+    const plans=plansJson?JSON.parse(plansJson):[];
+    if(plans.length>0){
+      // Read existing rels
+      let relsXml=await zip.file("word/_rels/document.xml.rels").async("string");
+
+      for(let i=0;i<plans.length;i++){
+        const pl=plans[i];
+        const ext=pl.dataUrl.startsWith("data:image/jpeg")?"jpg":"png";
+        const mediaName="planbeyne"+i+"."+ext;
+        const rId="rIdBeyne"+i;
+
+        // Add image to zip
+        zip.file("word/media/"+mediaName, pl.dataUrl.split(",")[1], {base64:true});
+
+        // Add relationship
+        relsXml=relsXml.replace('</Relationships>',
+          '<Relationship Id="'+rId+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/'+mediaName+'"/></Relationships>');
+      }
+      zip.file("word/_rels/document.xml.rels",relsXml);
+
+      // Add plan pages at the end of the document body (before </w:body>)
+      let planPages='';
+      // Page break first
+      planPages+='<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
+      planPages+='<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="200" w:before="100"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="28"/><w:color w:val="0F2B4A"/></w:rPr><w:t xml:space="preserve">ANNEXE - Plans de signalisation</w:t></w:r></w:p>';
+      planPages+='<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="200"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/><w:color w:val="666666"/></w:rPr><w:t xml:space="preserve">'+esc(addr)+'</w:t></w:r></w:p>';
+
+      for(let i=0;i<plans.length;i++){
+        if(i>0)planPages+='<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
+        planPages+='<w:p><w:pPr><w:spacing w:after="100"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="22"/><w:color w:val="0F2B4A"/></w:rPr><w:t xml:space="preserve">Plan '+(i+1)+' - '+esc(plans[i].label)+'</w:t></w:r></w:p>';
+        const cx=5760000, cy=Math.round(5760000*0.65);
+        planPages+='<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="200"/></w:pPr><w:r><w:rPr><w:noProof/></w:rPr><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="'+cx+'" cy="'+cy+'"/><wp:docPr id="'+(i+50)+'" name="PlanBeyne'+(i+1)+'"/><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="'+(i+50)+'" name="planbeyne'+i+'.png"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdBeyne'+i+'"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+cx+'" cy="'+cy+'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>';
+      }
+
+      // Insert before </w:body>
+      let docXml=await zip.file("word/document.xml").async("string");
+      docXml=docXml.replace('</w:body>',planPages+'</w:body>');
+      zip.file("word/document.xml",docXml);
+
+      // Update Content_Types if needed for png/jpg
+      let ct=await zip.file("[Content_Types].xml").async("string");
+      if(!ct.includes('Extension="png"'))ct=ct.replace('</Types>','<Default Extension="png" ContentType="image/png"/></Types>');
+      if(!ct.includes('Extension="jpg"'))ct=ct.replace('</Types>','<Default Extension="jpg" ContentType="image/jpeg"/></Types>');
+      zip.file("[Content_Types].xml",ct);
+    }
+
+    // 6. Download
     const blob=await zip.generateAsync({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");a.href=url;
