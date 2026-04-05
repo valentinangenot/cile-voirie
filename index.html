@@ -1354,13 +1354,13 @@ async function generateBeyne(){
 
   try{
     // Load the original PDF from GitHub
-    const pdfUrl="https://valentinangenot.github.io/cile-voirie/BeyneHeusayFormulaire.pdf";
+    const pdfUrl="https://valentinangenot.github.io/cile-voirie/Beyne-Heusay_formulaire.pdf";
     const resp=await fetch(pdfUrl);
     if(!resp.ok)throw new Error("Impossible de charger le PDF Beyne-Heusay");
     const pdfBytes=await resp.arrayBuffer();
 
     const {PDFDocument, rgb, StandardFonts}=PDFLib;
-    const pdf=await PDFDocument.load(pdfBytes);
+    const pdf=await PDFDocument.load(pdfBytes,{ignoreEncryption:true});
     const page=pdf.getPages()[0];
     const font=await pdf.embedFont(StandardFonts.Helvetica);
     const fontBold=await pdf.embedFont(StandardFonts.HelveticaBold);
@@ -1369,17 +1369,17 @@ async function generateBeyne(){
     const black=rgb(0,0,0);
     const sz=9;
 
-    // NFC normalize to avoid WinAnsi "combining accent" errors (0x0301 etc. on macOS)
+    // NFC normalize + strip non-WinAnsi to avoid "combining accent" errors (0x0301 on macOS)
     function sanitize(s){
       if(!s)return"";
       s=String(s).normalize("NFC");
-      // Replace chars outside WinAnsi with closest ASCII or ?
       return s.replace(/[^\x20-\x7E\xA0-\xFF]/g,c=>{
-        const m={"\u2019":"'","\u2018":"'","\u201C":'"',"\u201D":'"',"\u2013":"-","\u2014":"-","\u2026":"...","\u0152":"OE","\u0153":"oe"};
-        return m[c]||"?";
+        const m={"\u2019":"'","\u2018":"'","\u201C":'"',"\u201D":'"',
+                 "\u2013":"-","\u2014":"-","\u2026":"...","\u0152":"OE",
+                 "\u0153":"oe","\u202F":" ","\u00A0":" "};
+        return m[c]||"";
       });
     }
-    // Helper: draw text at PDF coordinates (pdfplumber y → pdf-lib y = H - y)
     function txt(x,y,text,options={}){
       page.drawText(sanitize(text),{
         x:x,
@@ -1404,16 +1404,16 @@ async function generateBeyne(){
     txt(32,268,buildAddress(),{size:10});
 
     // Explications
-    const desc=val("typeIntervention")+(val("natureTravaux")?" — "+val("natureTravaux"):"");
+    const desc=val("typeIntervention")+(val("natureTravaux")?" - "+val("natureTravaux"):"");
     txt(32,306,desc,{size:9});
-    txt(32,318,"Travaux de distribution d'eau — CILE",{size:8});
+    txt(32,318,"Travaux de distribution d'eau - CILE",{size:8});
 
     // Coordonnées du demandeur (left column)
-    txt(136,373,"CILE — Compagnie Intercommunale Liégeoise des Eaux",{size:7.5});
+    txt(136,373,"CILE - Compagnie Intercommunale Liegeoise des Eaux",{size:7.5});
     txt(78,407,val("responsable"));
-    txt(80,442,"Rue du Canal de l'Ourthe, 8 — 4031 Angleur");
+    txt(80,442,"Rue du Canal de l'Ourthe, 8 - 4031 Angleur");
     txt(95,459,"4031");
-    txt(80,476,"Angleur (Liège)");
+    txt(80,476,"Angleur (Liege)");
     txt(62,493,val("telResponsable"));
     txt(75,511,val("telResponsable"));
     txt(74,528,"travaux@cile.be");
@@ -1452,8 +1452,8 @@ async function generateBeyne(){
 
         // Title bar
         annexPage.drawRectangle({x:0,y:aH-50,width:aW,height:50,color:rgb(0.06,0.17,0.29)});
-        annexPage.drawText(sanitize("ANNEXE — Plan de signalisation"),{x:30,y:aH-35,size:16,font:fontBold,color:rgb(1,1,1)});
-        annexPage.drawText(sanitize(`${pl.label} — ${buildAddress()}`),{x:30,y:aH-48,size:9,font:font,color:rgb(0.8,0.8,0.8)});
+        annexPage.drawText(sanitize("ANNEXE - Plan de signalisation"),{x:30,y:aH-35,size:16,font:fontBold,color:rgb(1,1,1)});
+        annexPage.drawText(sanitize(pl.label+" - "+buildAddress()),{x:30,y:aH-48,size:9,font:font,color:rgb(0.8,0.8,0.8)});
 
         // Draw image centered, with margin
         const margin=40;
@@ -1466,12 +1466,12 @@ async function generateBeyne(){
         annexPage.drawImage(img,{x:dx,y:dy,width:dw,height:dh});
 
         // Footer
-        annexPage.drawText(sanitize(`Plan ${i+1}/${plans.length} — Commune de Beyne-Heusay — CILE`),{x:30,y:20,size:8,font:font,color:rgb(0.5,0.5,0.5)});
+        annexPage.drawText(sanitize("Plan "+(i+1)+"/"+plans.length+" - Commune de Beyne-Heusay - CILE"),{x:30,y:20,size:8,font:font,color:rgb(0.5,0.5,0.5)});
       }
     }
 
     // ── Save and download ──
-    const filledBytes=await pdf.save();
+    const filledBytes=await pdf.save({updateMetadata:false});
     const blob=new Blob([filledBytes],{type:"application/pdf"});
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");
