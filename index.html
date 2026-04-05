@@ -360,7 +360,7 @@ textarea{resize:vertical;}
     <div class="btn-row">
       <button class="btn btn-secondary" onclick="goStep(0)">← Modifier</button>
       <button class="btn btn-primary" id="btnGenerate" onclick="generate()" style="min-width:260px;">📄 Générer le Word (.docx)</button>
-      <button class="btn btn-primary" id="btnBeyne" onclick="generateBeyne()" style="min-width:260px;background:#8a4a00;display:none;">📋 Formulaire Beyne-Heusay (PDF)</button>
+      <button class="btn btn-primary" id="btnBeyne" onclick="generateBeyne()" style="min-width:260px;background:#8a4a00;display:none;">Formulaire Beyne-Heusay (Word)</button>
     </div>
   </div>
 </div>
@@ -1175,19 +1175,34 @@ async function generate(){
     // Embed each plan as an image in the docx
     signPlans.forEach((pl,idx)=>{
       if(idx>0)body+=p("",{after:100});
-      body+=p(`Plan ${idx+1} — ${esc(pl.label)}`,{bold:true,size:18,color:GREY,after:60});
-      // Add image reference — stored in the zip as image files
+      body+=p(`Plan ${idx+1} - ${esc(pl.label)}`,{bold:true,size:18,color:GREY,after:60});
+      // Compute image dimensions — use full page width (A4 = ~17cm usable) and proportional height
+      // EMU = English Metric Units: 1 cm = 360000 EMU, usable width ~16cm = 5760000 EMU
+      const imgEl=new Image();
+      const maxCx=5760000; // ~16cm wide
+      let cx=maxCx, cy=Math.round(maxCx*0.65); // default 65% ratio
+      // Try to get actual aspect ratio from the dataUrl
+      try{
+        const tmpImg=document.createElement("img");
+        tmpImg.src=pl.dataUrl;
+        if(tmpImg.naturalWidth&&tmpImg.naturalHeight){
+          const ratio=tmpImg.naturalHeight/tmpImg.naturalWidth;
+          cy=Math.round(maxCx*ratio);
+          // Cap height to ~22cm (7920000 EMU) to fit on page
+          if(cy>7920000){cx=Math.round(7920000/ratio);cy=7920000;}
+        }
+      }catch(e){}
       body+=`<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="200"/></w:pPr>
         <w:r><w:rPr><w:noProof/></w:rPr>
         <w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">
-          <wp:extent cx="5400000" cy="3400000"/>
+          <wp:extent cx="${cx}" cy="${cy}"/>
           <wp:docPr id="${idx+10}" name="Plan${idx+1}"/>
           <a:graphic>
             <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
               <pic:pic>
                 <pic:nvPicPr><pic:cNvPr id="${idx+10}" name="plan${idx+1}.png"/><pic:cNvPicPr/></pic:nvPicPr>
                 <pic:blipFill><a:blip r:embed="rIdPlan${idx}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>
-                <pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="5400000" cy="3400000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>
+                <pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>
               </pic:pic>
             </a:graphicData>
           </a:graphic>
@@ -1345,165 +1360,143 @@ function checkPlans(){
 }
 
 // ═══════════════════════════════════════════
-// BEYNE-HEUSAY PDF FORM FILLING
-// Uses pdf-lib to overlay text on the original PDF
+// BEYNE-HEUSAY WORD FORM GENERATION
+// Generates a .docx directly — no PDF dependency, no encoding issues
 // ═══════════════════════════════════════════
 async function generateBeyne(){
   const btn=document.getElementById("btnBeyne");
-  btn.disabled=true;btn.textContent="⏳ Génération…";
+  btn.disabled=true;btn.textContent="Generation...";
 
   try{
-    // Load the original PDF from GitHub
-    const pdfUrl="https://valentinangenot.github.io/cile-voirie/Beyne-Heusay_formulaire.pdf";
-    const resp=await fetch(pdfUrl);
-    if(!resp.ok)throw new Error("Impossible de charger le PDF Beyne-Heusay");
-    const pdfBytes=await resp.arrayBuffer();
-
-    const {PDFDocument, rgb, StandardFonts}=PDFLib;
-    const pdf=await PDFDocument.load(pdfBytes,{ignoreEncryption:true});
-    const page=pdf.getPages()[0];
-    const font=await pdf.embedFont(StandardFonts.Helvetica);
-    const fontBold=await pdf.embedFont(StandardFonts.HelveticaBold);
-    const H=page.getHeight();
-    const blue=rgb(0.05,0.15,0.35);
-    const black=rgb(0,0,0);
-    const sz=9;
-
-    // NFC normalize + strip non-WinAnsi to avoid "combining accent" errors (0x0301 on macOS)
-    function sanitize(s){
-      if(!s)return"";
-      s=String(s).normalize("NFC");
-      return s.replace(/[^\x20-\x7E\xA0-\xFF]/g,c=>{
-        const m={"\u2019":"'","\u2018":"'","\u201C":'"',"\u201D":'"',
-                 "\u2013":"-","\u2014":"-","\u2026":"...","\u0152":"OE",
-                 "\u0153":"oe","\u202F":" ","\u00A0":" "};
-        return m[c]||"";
-      });
-    }
-    function txt(x,y,text,options={}){
-      page.drawText(sanitize(text),{
-        x:x,
-        y:H-y-(options.size||sz),
-        size:options.size||sz,
-        font:options.bold?fontBold:font,
-        color:options.color||blue
-      });
-    }
-
-    // Helper: draw a checkmark (✓)
-    function check(x,y){
-      txt(x+2,y-1,"X",{size:12,bold:true,color:black});
-    }
-
-    // ── Fill fields ──
-
-    // Helper: format date DD/MM/YYYY
-    function fmtD(d){if(!d)return"";const[y,m,day]=d.split("-");return day+"/"+m+"/"+y;}
-
-    // "La demande concerne" — check TRAVAUX
-    check(63,228);
-
-    // Lieu précis
-    txt(32,270,buildAddress(),{size:10});
-
-    // Explications
-    const desc=val("typeIntervention")+(val("natureTravaux")?" - "+val("natureTravaux"):"");
-    txt(32,308,desc,{size:9});
-    txt(32,320,"Travaux de distribution d'eau - CILE",{size:8});
-
-    // Coordonnées du demandeur (left column)
-    txt(176,375,"CILE - Cie Intercommunale Liegeoise des Eaux",{size:7});
-    // Nom
+    const today=new Date();
+    const dateStr=today.toLocaleDateString("fr-BE");
+    const addr=buildAddress();
     const fullName=val("responsable").trim();
     const nameParts=fullName.split(/\s+/);
-    const lastName=nameParts.length>1?nameParts.slice(-1).join(" "):fullName;
+    const lastName=nameParts.length>1?nameParts.slice(-1)[0]:fullName;
     const firstName=nameParts.length>1?nameParts.slice(0,-1).join(" "):"";
-    txt(78,407,lastName);
-    // Prénom
-    txt(88,424,firstName);
-    // Adresse
-    txt(100,442,"Rue du Canal de l'Ourthe, 8 - 4031 Angleur",{size:8});
-    // Code postal
-    txt(118,458,"4031");
-    // Localité
-    txt(95,475,"Angleur (Liege)");
-    // Tél
-    txt(62,493,val("telResponsable"));
-    // GSM
-    txt(75,511,val("telResponsable"));
-    // Email
-    txt(80,528,"travaux@cile.be");
+    function fmtD(d){if(!d)return"";const[y,m,day]=d.split("-");return day+"/"+m+"/"+y;}
 
-    // Dates — formatted DD/MM/YYYY
-    txt(80,580,fmtD(val("dateDebut")));
-    txt(80,595,val("heureDe")||"07:00");
-    txt(368,580,fmtD(val("dateFin")));
-    txt(368,595,val("heureA")||"17:00");
+    const BF='w:ascii="Calibri" w:hAnsi="Calibri"';
+    const NF='w:ascii="Calibri Light" w:hAnsi="Calibri Light"';
+    const NV="0F2B4A", BL="1A4A7A", GY="666666";
 
-    // Panneaux — Non
-    check(63,645);
-
-    // Fait à / Le
-    const today=new Date();
-    txt(80,717,"Angleur");
-    txt(52,730,today.toLocaleDateString("fr-BE"));
-
-    // ── Add plan pages from signalisation editor ──
-    const plansJson=localStorage.getItem("cile_signalisation_plans");
-    const plans=plansJson?JSON.parse(plansJson):[];
-    if(plans.length>0){
-      for(let i=0;i<plans.length;i++){
-        const pl=plans[i];
-        // Decode base64 image
-        const imgBytes=await fetch(pl.dataUrl).then(r=>r.arrayBuffer());
-        let img;
-        if(pl.dataUrl.startsWith("data:image/png")){
-          img=await pdf.embedPng(imgBytes);
-        } else {
-          img=await pdf.embedJpg(imgBytes);
-        }
-        // Add a new A4 page
-        const annexPage=pdf.addPage([595.28,841.89]);
-        const aW=annexPage.getWidth(),aH=annexPage.getHeight();
-
-        // Title bar
-        annexPage.drawRectangle({x:0,y:aH-50,width:aW,height:50,color:rgb(0.06,0.17,0.29)});
-        annexPage.drawText(sanitize("ANNEXE - Plan de signalisation"),{x:30,y:aH-35,size:16,font:fontBold,color:rgb(1,1,1)});
-        annexPage.drawText(sanitize(pl.label+" - "+buildAddress()),{x:30,y:aH-48,size:9,font:font,color:rgb(0.8,0.8,0.8)});
-
-        // Draw image centered, with margin
-        const margin=40;
-        const maxW=aW-margin*2;
-        const maxH=aH-120; // space for title + footer
-        const scale=Math.min(maxW/img.width,maxH/img.height,1);
-        const dw=img.width*scale,dh=img.height*scale;
-        const dx=(aW-dw)/2;
-        const dy=aH-70-dh; // below title bar
-        annexPage.drawImage(img,{x:dx,y:dy,width:dw,height:dh});
-
-        // Footer
-        annexPage.drawText(sanitize("Plan "+(i+1)+"/"+plans.length+" - Commune de Beyne-Heusay - CILE"),{x:30,y:20,size:8,font:font,color:rgb(0.5,0.5,0.5)});
-      }
+    function bp(text,opts={}){
+      const rpr=[];
+      if(opts.bold)rpr.push("<w:b/>");
+      if(opts.italic)rpr.push("<w:i/>");
+      rpr.push('<w:color w:val="'+(opts.color||"333333")+'"/>');
+      rpr.push('<w:sz w:val="'+(opts.size||20)+'"/>');
+      rpr.push("<w:rFonts "+(opts.bold?BF:NF)+"/>");
+      const jc=opts.center?'<w:jc w:val="center"/>':"";
+      return '<w:p><w:pPr>'+jc+'<w:spacing w:after="'+(opts.after||80)+'" w:before="'+(opts.before||0)+'"/></w:pPr><w:r><w:rPr>'+rpr.join("")+'</w:rPr><w:t xml:space="preserve">'+esc(text)+'</w:t></w:r></w:p>';
     }
 
-    // ── Save and download ──
-    const filledBytes=await pdf.save({updateMetadata:false});
-    const blob=new Blob([filledBytes],{type:"application/pdf"});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");
-    a.href=url;
-    a.download=`Beyne-Heusay_Demande_Police_${today.toISOString().slice(0,10)}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
+    function brow(label,value,shade){
+      const sh=shade?'<w:shd w:val="clear" w:color="auto" w:fill="F0F4F8"/>':"";
+      return '<w:tr><w:tc><w:tcPr><w:tcW w:w="3200" w:type="dxa"/>'+sh+'</w:tcPr><w:p><w:pPr><w:spacing w:before="40" w:after="40"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="18"/><w:color w:val="'+NV+'"/><w:rFonts '+BF+'/></w:rPr><w:t xml:space="preserve">'+esc(label)+'</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:w="6800" w:type="dxa"/>'+sh+'</w:tcPr><w:p><w:pPr><w:spacing w:before="40" w:after="40"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/><w:rFonts '+NF+'/></w:rPr><w:t xml:space="preserve">'+esc(value||"")+'</w:t></w:r></w:p></w:tc></w:tr>';
+    }
 
+    function secHead(text){
+      return '<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="4" w:color="'+BL+'"/></w:pBdr><w:spacing w:before="200" w:after="80"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="22"/><w:color w:val="'+NV+'"/><w:rFonts '+BF+'/></w:rPr><w:t xml:space="preserve">'+esc(text)+'</w:t></w:r></w:p>';
+    }
+
+    function tbl(rows){
+      let r=rows.map((row,i)=>brow(row[0],row[1],i%2===0)).join("");
+      return '<w:tbl><w:tblPr><w:tblW w:w="10000" w:type="dxa"/><w:tblBorders><w:top w:val="single" w:sz="4" w:color="'+BL+'"/><w:bottom w:val="single" w:sz="4" w:color="'+BL+'"/><w:insideH w:val="single" w:sz="2" w:color="E0E4EA"/></w:tblBorders></w:tblPr>'+r+'</w:tbl>';
+    }
+
+    let body="";
+
+    // Header
+    body+=bp("COMMUNE DE BEYNE-HEUSAY",{bold:true,size:28,color:NV,center:true,after:20,before:100});
+    body+=bp("POLICE ADMINISTRATIVE - DEMANDE D'AUTORISATION",{bold:true,size:24,color:NV,center:true,after:10});
+    body+=bp("Travaux / Occupation privative de la voie publique",{size:20,color:GY,center:true,after:40});
+    body+=bp("A solliciter aupres du Service Mobilite au minimum 6 jours ouvrables avant la date souhaitee.",{italic:true,size:17,color:"8a5a00",after:20});
+    body+=bp("Service Mobilite - Avenue de la Gare, 68 - 4610 Beyne-Heusay - Tel : 04/355.81.67 - mobilite@beyne-heusay.be",{size:16,color:GY,after:40});
+
+    // Demande concerne
+    body+=bp("La demande concerne : TRAVAUX",{bold:true,size:20,after:30});
+
+    // Lieu
+    body+=secHead("Lieu precis de l'occupation");
+    body+=bp(addr,{size:20,after:30});
+
+    // Explications
+    body+=secHead("Explications complementaires, motif et/ou nature des travaux");
+    const desc2=val("typeIntervention")+(val("natureTravaux")?" - "+val("natureTravaux"):"");
+    body+=bp(desc2,{size:20,after:10});
+    body+=bp("Travaux de distribution d'eau - CILE",{size:18,color:GY,after:10});
+    if(val("description"))body+=bp(val("description"),{size:18,color:GY,after:30});
+
+    // Coordonnees
+    body+=secHead("Coordonnees du demandeur");
+    body+=tbl([
+      ["Firme","CILE - Compagnie Intercommunale Liegeoise des Eaux"],
+      ["Nom",lastName],["Prenom",firstName],
+      ["Adresse","Rue du Canal de l'Ourthe, 8 - 4031 Angleur"],
+      ["Code postal","4031"],["Localite","Angleur (Liege)"],
+      ["Telephone",val("telResponsable")],["GSM",val("telResponsable")],
+      ["E-mail","travaux@cile.be"],
+    ]);
+
+    // Dates
+    body+=secHead("Periode des travaux");
+    body+=tbl([
+      ["Date de debut",fmtD(val("dateDebut"))],["Heure de debut",val("heureDe")||"07:00"],
+      ["Date de fin",fmtD(val("dateFin"))],["Heure de fin",val("heureA")||"17:00"],
+    ]);
+
+    // Panneaux + signature
+    body+=bp("",{after:60});
+    body+=bp("Panneaux d'interdiction de stationner : Non",{size:20,after:40});
+    body+=bp("Fait a Angleur, le "+dateStr,{size:20,after:20,before:100});
+    body+=bp("",{after:200});
+    body+=bp("Signature du demandeur",{size:18,color:GY,after:10});
+    body+=bp(fullName+" - CILE Service Travaux",{bold:true,size:20,color:NV,after:10});
+    body+=bp(val("telResponsable")+" - travaux@cile.be",{size:18,color:GY,after:40});
+
+    // Plans
+    const plansJson=localStorage.getItem("cile_signalisation_plans");
+    const plans=plansJson?JSON.parse(plansJson):[];
+    let wordRels='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">';
+
+    if(plans.length>0){
+      body+='<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
+      body+=bp("ANNEXE - Plans de signalisation",{bold:true,size:26,color:NV,center:true,after:20,before:100});
+      body+=bp(addr,{size:18,color:GY,center:true,after:40});
+      for(let i=0;i<plans.length;i++){
+        const pl=plans[i];
+        if(i>0)body+='<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
+        body+=bp("Plan "+(i+1)+" - "+pl.label,{bold:true,size:20,color:NV,after:20});
+        const cx=5760000,cy=Math.round(5760000*0.65);
+        body+='<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="100"/></w:pPr><w:r><w:rPr><w:noProof/></w:rPr><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="'+cx+'" cy="'+cy+'"/><wp:docPr id="'+(i+10)+'" name="Plan'+(i+1)+'"/><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="'+(i+10)+'" name="plan'+i+'.png"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdBP'+i+'"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+cx+'" cy="'+cy+'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>';
+        const ext=pl.dataUrl.startsWith("data:image/jpeg")?"jpg":"png";
+        wordRels+='<Relationship Id="rIdBP'+i+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/bp'+i+'.'+ext+'"/>';
+      }
+    }
+    wordRels+='</Relationships>';
+
+    const docXml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><w:body>'+body+'<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="800" w:right="900" w:bottom="600" w:left="900"/></w:sectPr></w:body></w:document>';
+
+    const zip=new JSZip();
+    zip.file("[Content_Types].xml",'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Default Extension="jpg" ContentType="image/jpeg"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
+    zip.file("_rels/.rels",'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
+    zip.file("word/document.xml",docXml);
+    zip.file("word/_rels/document.xml.rels",wordRels);
+    if(plans.length>0){plans.forEach((pl,i)=>{const ext=pl.dataUrl.startsWith("data:image/jpeg")?"jpg":"png";zip.file("word/media/bp"+i+"."+ext,pl.dataUrl.split(",")[1],{base64:true});});}
+
+    const blob=await zip.generateAsync({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;
+    a.download="Beyne-Heusay_Demande_Police_"+today.toISOString().slice(0,10)+".docx";
+    a.click();URL.revokeObjectURL(url);
   }catch(e){
     console.error(e);
-    alert("Erreur lors de la génération du PDF Beyne-Heusay :\n"+e.message+"\n\nAssurez-vous que le fichier Beyne-Heusay_formulaire.pdf est sur le repo GitHub.");
+    alert("Erreur : "+e.message);
   }
-
-  btn.disabled=false;btn.textContent="📋 Formulaire Beyne-Heusay (PDF)";
+  btn.disabled=false;btn.textContent="Formulaire Beyne-Heusay (Word)";
 }
 </script>
 </body>
-</html>
 </html>
