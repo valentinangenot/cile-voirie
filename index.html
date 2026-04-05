@@ -1370,8 +1370,16 @@ async function generateBeyne(){
     const sz=9;
 
     // Helper: draw text at PDF coordinates (pdfplumber y → pdf-lib y = H - y)
+    // NFC normalize to avoid WinAnsi "combining accent" errors (0x0301 etc.)
+    function sanitize(s){
+      if(!s)return"";
+      // Normalize NFD→NFC (é = e+́ → é)
+      s=s.normalize("NFC");
+      // Strip any remaining non-WinAnsi characters
+      return s.replace(/[^\x00-\xFF]/g,"?");
+    }
     function txt(x,y,text,options={}){
-      page.drawText(text||"",{
+      page.drawText(sanitize(text),{
         x:x,
         y:H-y-(options.size||sz),
         size:options.size||sz,
