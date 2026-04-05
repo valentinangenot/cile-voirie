@@ -1354,7 +1354,7 @@ async function generateBeyne(){
 
   try{
     // Load the original PDF from GitHub
-    const pdfUrl="https://valentinangenot.github.io/cile-voirie/BeyneHeusayFormulaire.pdf";
+    const pdfUrl="https://valentinangenot.github.io/cile-voirie/Beyne-Heusay_formulaire.pdf";
     const resp=await fetch(pdfUrl);
     if(!resp.ok)throw new Error("Impossible de charger le PDF Beyne-Heusay");
     const pdfBytes=await resp.arrayBuffer();
@@ -1397,40 +1397,56 @@ async function generateBeyne(){
 
     // ── Fill fields ──
 
+    // Helper: format date DD/MM/YYYY
+    function fmtD(d){if(!d)return"";const[y,m,day]=d.split("-");return day+"/"+m+"/"+y;}
+
     // "La demande concerne" — check TRAVAUX
-    check(37,226); // ☐ TRAVAUX checkbox position
+    check(63,228);
 
     // Lieu précis
-    txt(32,268,buildAddress(),{size:10});
+    txt(32,270,buildAddress(),{size:10});
 
     // Explications
     const desc=val("typeIntervention")+(val("natureTravaux")?" - "+val("natureTravaux"):"");
-    txt(32,306,desc,{size:9});
-    txt(32,318,"Travaux de distribution d'eau - CILE",{size:8});
+    txt(32,308,desc,{size:9});
+    txt(32,320,"Travaux de distribution d'eau - CILE",{size:8});
 
     // Coordonnées du demandeur (left column)
-    txt(136,373,"CILE - Compagnie Intercommunale Liegeoise des Eaux",{size:7.5});
-    txt(78,407,val("responsable"));
-    txt(80,442,"Rue du Canal de l'Ourthe, 8 - 4031 Angleur");
-    txt(95,459,"4031");
-    txt(80,476,"Angleur (Liege)");
+    txt(176,375,"CILE - Cie Intercommunale Liegeoise des Eaux",{size:7});
+    // Nom
+    const fullName=val("responsable").trim();
+    const nameParts=fullName.split(/\s+/);
+    const lastName=nameParts.length>1?nameParts.slice(-1).join(" "):fullName;
+    const firstName=nameParts.length>1?nameParts.slice(0,-1).join(" "):"";
+    txt(78,407,lastName);
+    // Prénom
+    txt(88,424,firstName);
+    // Adresse
+    txt(100,442,"Rue du Canal de l'Ourthe, 8 - 4031 Angleur",{size:8});
+    // Code postal
+    txt(118,458,"4031");
+    // Localité
+    txt(95,475,"Angleur (Liege)");
+    // Tél
     txt(62,493,val("telResponsable"));
+    // GSM
     txt(75,511,val("telResponsable"));
-    txt(74,528,"travaux@cile.be");
+    // Email
+    txt(80,528,"travaux@cile.be");
 
-    // Dates
-    txt(70,580,val("dateDebut"));
-    txt(76,592,val("heureDe")||"08:00");
-    txt(358,580,val("dateFin"));
-    txt(352,592,val("heureA")||"17:00");
+    // Dates — formatted DD/MM/YYYY
+    txt(80,580,fmtD(val("dateDebut")));
+    txt(80,595,val("heureDe")||"07:00");
+    txt(368,580,fmtD(val("dateFin")));
+    txt(368,595,val("heureA")||"17:00");
 
     // Panneaux — Non
-    check(39,641);
+    check(63,645);
 
     // Fait à / Le
     const today=new Date();
-    txt(80,713,"Angleur");
-    txt(67,724,today.toLocaleDateString("fr-BE"));
+    txt(80,717,"Angleur");
+    txt(52,730,today.toLocaleDateString("fr-BE"));
 
     // ── Add plan pages from signalisation editor ──
     const plansJson=localStorage.getItem("cile_signalisation_plans");
@@ -1489,4 +1505,5 @@ async function generateBeyne(){
 }
 </script>
 </body>
+</html>
 </html>
