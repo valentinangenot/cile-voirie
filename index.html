@@ -6,7 +6,7 @@
 <title>CILE — Générateur de demandes voirie</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 :root {
   --navy: #0f2b4a;
@@ -133,6 +133,142 @@ textarea{resize:vertical;}
   .grid-2,.grid-3{grid-template-columns:1fr;}
   #mapContainer{grid-template-columns:1fr!important;}
 }
+
+/* ─── Toolbar ─── */
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap;}
+.toolbar-left,.toolbar-right{display:flex;gap:8px;align-items:center;}
+.tool-btn{
+  padding:7px 14px;border-radius:7px;border:1px solid var(--border);background:var(--card);color:var(--text-sec);
+  font-size:12.5px;font-weight:500;font-family:inherit;cursor:pointer;transition:all .15s;
+}
+.tool-btn:hover{background:#f0f4f8;border-color:var(--navy-light);color:var(--accent);}
+.tool-btn.icon-btn{padding:7px 10px;font-size:14px;}
+.draft-indicator{font-size:11.5px;color:var(--text-dim);font-style:italic;}
+
+/* ─── Templates bar ─── */
+.templates-bar{
+  display:flex;gap:8px;align-items:center;margin-bottom:18px;padding:10px 14px;
+  background:linear-gradient(90deg,#eaf3fb 0%,#f4f8fc 100%);border-radius:8px;border:1px solid #d0e0ec;flex-wrap:wrap;
+}
+.templates-label{font-size:12px;font-weight:600;color:var(--navy-mid);text-transform:uppercase;letter-spacing:.5px;margin-right:4px;}
+.template-btn{
+  padding:6px 12px;border-radius:6px;border:1px solid #b8d0e4;background:#fff;color:var(--accent);
+  font-size:12.5px;font-weight:500;font-family:inherit;cursor:pointer;transition:all .15s;
+}
+.template-btn:hover{background:var(--navy-mid);color:#fff;border-color:var(--navy-mid);transform:translateY(-1px);}
+
+/* ─── Modal ─── */
+.modal{position:fixed;inset:0;background:rgba(15,43,74,0.55);display:flex;align-items:center;justify-content:center;z-index:1000;animation:fadeIn .2s;}
+.modal.hidden{display:none;}
+.modal-content{background:var(--card);border-radius:12px;max-width:560px;width:92%;max-height:82vh;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3);display:flex;flex-direction:column;}
+.modal-header{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--card-alt);}
+.modal-title{font-weight:700;font-size:16px;color:var(--accent);}
+.modal-close{background:none;border:none;font-size:24px;cursor:pointer;color:var(--text-dim);width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.modal-close:hover{background:#f0f2f5;color:var(--text);}
+.modal-body{padding:14px 22px;overflow-y:auto;flex:1;}
+.modal-footer{padding:12px 22px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--card-alt);}
+.history-item{padding:12px 14px;border-radius:8px;border:1px solid var(--border);margin-bottom:8px;cursor:pointer;transition:all .15s;}
+.history-item:hover{background:#eaf3fb;border-color:var(--navy-light);transform:translateX(3px);}
+.history-label{font-weight:600;color:var(--text);font-size:13.5px;margin-bottom:3px;}
+.history-date{font-size:11.5px;color:var(--text-dim);}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+/* ─── Water progress (gadget) ─── */
+.water-progress{
+  position:fixed;bottom:18px;right:18px;width:90px;height:90px;
+  border-radius:50%;background:#fff;border:3px solid var(--navy);
+  overflow:hidden;box-shadow:0 4px 20px rgba(15,43,74,0.25);
+  z-index:500;transition:all .3s;
+}
+.water-progress svg{position:absolute;inset:0;width:100%;height:100%;display:block;}
+.water-progress #waterGroup{transition:transform 1s cubic-bezier(.22,.61,.36,1);}
+.water-progress .wave-path{animation:waveSlide 3.5s linear infinite;}
+.water-progress .wave-path-2{animation:waveSlide 5s linear infinite reverse;opacity:.5;}
+@keyframes waveSlide{
+  0%{transform:translateX(0);}
+  100%{transform:translateX(-50%);}
+}
+.water-label{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  flex-direction:column;z-index:3;font-weight:700;color:var(--navy);
+  text-shadow:0 1px 3px rgba(255,255,255,0.9),0 1px 2px rgba(255,255,255,0.9);
+  pointer-events:none;line-height:1;
+}
+.water-label .pct{font-size:20px;}
+.water-label .lbl{font-size:9px;font-weight:500;opacity:.7;margin-top:2px;text-transform:uppercase;letter-spacing:.5px;}
+
+/* ─── Heatmap widget ─── */
+/* ─── Dashboard styles ─── */
+.dash-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin-bottom:22px;}
+.dash-kpi{background:linear-gradient(135deg,#f4f8fc,#eef3fa);border:1px solid var(--border);border-radius:10px;padding:14px 16px;text-align:center;}
+.dash-kpi-value{font-size:26px;font-weight:700;color:var(--navy);line-height:1.1;}
+.dash-kpi-label{font-size:11.5px;color:var(--text-sec);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-top:6px;}
+.dash-kpi-sub{font-size:11px;color:var(--text-dim);margin-top:3px;}
+.dash-section{margin-bottom:22px;padding:14px 18px;background:var(--card);border:1px solid var(--border);border-radius:10px;}
+.dash-section-title{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:12px;letter-spacing:-.2px;}
+.dash-bars{display:flex;flex-direction:column;gap:6px;}
+.dash-bar-row{display:grid;grid-template-columns:130px 1fr 80px;gap:10px;align-items:center;font-size:12px;}
+.dash-bar-label{color:var(--text);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dash-bar-wrap{position:relative;height:20px;background:#f0f3f7;border-radius:4px;overflow:hidden;}
+.dash-bar{position:absolute;top:0;left:0;bottom:0;background:linear-gradient(90deg,#4a80b8,#1a4a7a);border-radius:4px;transition:width .4s;}
+.dash-bar-urg{position:absolute;top:0;left:0;bottom:0;background:#c33;border-radius:4px;opacity:.8;}
+.dash-bar-count{font-weight:600;color:var(--text-sec);text-align:right;font-size:12px;}
+.dash-grid-sm{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:8px;}
+.dash-small-card{background:var(--card-alt);border:1px solid var(--border);border-radius:7px;padding:10px 12px;text-align:center;}
+.dash-timeline{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;align-items:end;min-height:140px;}
+.dash-timeline-col{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.dash-timeline-bar-wrap{width:100%;height:100px;position:relative;display:flex;align-items:flex-end;}
+.dash-timeline-bar{width:100%;background:linear-gradient(180deg,#4a80b8,#1a4a7a);border-radius:3px 3px 0 0;transition:height .4s;}
+.dash-timeline-bar-urg{width:100%;background:#c33;border-radius:3px 3px 0 0;position:absolute;bottom:0;left:0;}
+.dash-timeline-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;}
+.dash-timeline-count{font-size:11px;color:var(--text-sec);font-weight:600;}
+.dash-table{display:flex;flex-direction:column;gap:4px;}
+.dash-tr{display:grid;grid-template-columns:70px 110px 1fr 130px 50px 60px;gap:8px;padding:7px 10px;border-radius:5px;background:var(--card-alt);font-size:12px;align-items:center;}
+.dash-th{background:var(--navy-mid);color:#fff;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px;}
+body.dark .dash-kpi{background:linear-gradient(135deg,#1b2d42,#223652);}
+body.dark .dash-section{background:var(--card);}
+body.dark .dash-bar-wrap{background:#243549;}
+
+/* ─── Dark theme ─── */
+body.dark{
+  --bg:#0d1621;--card:#162535;--card-alt:#1b2d42;
+  --border:#2a3d55;--border-light:#243549;
+  --text:#d6e0ea;--text-sec:#98a8bb;--text-dim:#6d7e93;--text-label:#b0bfd0;
+  --accent:#5ca3e0;--navy:#0a1929;--navy-mid:#1f5a94;--navy-light:#3a7bbf;
+  --green-bg:#1e3a2a;--green-border:#2e5a42;--green:#7dd1a3;
+  --warn-bg:#3d3018;--warn-border:#6e5a28;--warn-text:#e8c878;
+  --info-bg:#1a2e45;--info-border:#2f4a68;
+  --red-bg:#3d1f24;--red:#f08080;
+}
+body.dark input,body.dark select,body.dark textarea{background:#1b2d42!important;color:var(--text);border-color:#2a3d55!important;}
+body.dark .toggle{background:#1b2d42;border-color:#2a3d55;color:var(--text-sec);}
+body.dark .toggle.on{background:#1f5a94;color:#fff;}
+body.dark .rules-panel{background:#1b2d42;color:var(--text-sec);}
+body.dark .template-btn{background:#1b2d42;border-color:#2a3d55;color:var(--accent);}
+body.dark .template-btn:hover{background:var(--navy-mid);color:#fff;}
+body.dark .templates-bar{background:linear-gradient(90deg,#182a3f 0%,#1e3149 100%);border-color:#2a3d55;}
+body.dark .tip{background:#3d3018;color:#e8c878;}
+body.dark .modal-content{background:var(--card);}
+body.dark .water-progress{background:#162535;border-color:var(--accent);}
+body.dark .water-label{color:var(--accent);text-shadow:0 1px 2px rgba(0,0,0,0.5);}
+
+/* ─── Mail toast ─── */
+.mail-toast{
+  position:fixed;top:20px;right:20px;max-width:380px;background:var(--card);
+  border-radius:10px;border:2px solid #1a6b3c;box-shadow:0 8px 28px rgba(0,0,0,0.2);
+  padding:14px 18px;z-index:2000;animation:slideInRight .3s cubic-bezier(.22,.61,.36,1);
+}
+.mail-toast-header{font-weight:700;color:#1a6b3c;font-size:14px;margin-bottom:8px;}
+.mail-toast-body{font-size:12.5px;color:var(--text);line-height:1.5;}
+.mail-toast-body code{background:#eaf3fb;padding:2px 6px;border-radius:3px;font-size:11px;word-break:break-all;}
+.mail-toast-close{
+  margin-top:10px;padding:6px 14px;border:none;background:#1a6b3c;color:#fff;
+  border-radius:5px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;
+}
+.mail-toast-close:hover{background:#154a2a;}
+@keyframes slideInRight{from{transform:translateX(110%);opacity:0;}to{transform:translateX(0);opacity:1;}}
+body.dark .mail-toast{background:var(--card);}
+body.dark .mail-toast-body code{background:#1a2e45;color:var(--accent);}
 </style>
 </head>
 <body>
@@ -148,6 +284,29 @@ textarea{resize:vertical;}
 </div>
 
 <div class="wrap">
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <button class="tool-btn" onclick="openDashboard()" title="Dashboard analytique des interventions" style="background:linear-gradient(135deg,#e8f0fa,#d4e4f4);border-color:#a0c0e0;color:var(--navy-mid);font-weight:600;">📊 Dashboard</button>
+      <button class="tool-btn" onclick="openHistory()" title="Historique des dernières demandes">📂 Historique</button>
+      <button class="tool-btn" onclick="if(confirm('Effacer le brouillon et recommencer ?')){clearDraft();resetForm();}" title="Nouveau formulaire">✨ Nouveau</button>
+    </div>
+    <div class="toolbar-right">
+      <span id="draftIndicator" class="draft-indicator"></span>
+      <button class="tool-btn icon-btn" onclick="toggleTheme()" title="Thème clair/sombre" id="themeBtn">🌙</button>
+    </div>
+  </div>
+
+  <!-- Modèles rapides (Step 0 only) -->
+  <div id="templatesBar" class="templates-bar">
+    <div class="templates-label">Modèle rapide :</div>
+    <button class="template-btn" onclick="applyTemplate('fuite')">🚨 Fuite urgente</button>
+    <button class="template-btn" onclick="applyTemplate('raccordement')">💧 Nouveau raccordement</button>
+    <button class="template-btn" onclick="applyTemplate('renouvellement')">🔧 Renouvellement</button>
+    <button class="template-btn" onclick="applyTemplate('compteur')">📊 Pose compteur</button>
+    <button class="template-btn" onclick="applyTemplate('entretien')">🔍 Entretien</button>
+  </div>
+
   <!-- Steps -->
   <div class="steps">
     <button class="step-btn active" id="stepBtn0" onclick="goStep(0)">1. Informations chantier</button>
@@ -331,11 +490,15 @@ textarea{resize:vertical;}
   <!-- ════════ STEP 1 ════════ -->
   <div id="step1" class="hidden">
     <div class="card">
-      <div class="card-title" id="recapTitle">Récapitulatif</div>
+      <div class="card-title" id="recapTitle" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>Récapitulatif</span>
+        <button id="btnCopyRecap" onclick="exportRecapText()" style="padding:5px 12px;font-size:11.5px;font-weight:600;background:var(--navy-mid);color:#fff;border:none;border-radius:5px;cursor:pointer;font-family:inherit;">📋 Copier en texte</button>
+      </div>
       <div class="card-body">
         <div class="grid-2" id="recapGrid"></div>
       </div>
     </div>
+    <div id="heatmapCard" style="display:none;"></div>
     <div class="card" style="border:2px solid var(--navy-light);">
       <div class="card-title" style="background:var(--navy-mid);color:#fff;" id="processTitle">📋 Marche à suivre</div>
       <div class="card-body" id="processBody" style="font-size:13.5px;line-height:1.8;"></div>
@@ -359,7 +522,8 @@ textarea{resize:vertical;}
     </div>
     <div class="btn-row">
       <button class="btn btn-secondary" onclick="goStep(0)">← Modifier</button>
-      <button class="btn btn-primary" id="btnGenerate" onclick="generate()" style="min-width:260px;">📄 Générer le Word (.docx)</button>
+      <button class="btn btn-primary" id="btnGenerate" onclick="generate()" style="min-width:220px;">📄 Générer le Word</button>
+      <button class="btn btn-primary" id="btnGenerateMail" onclick="generate(true)" style="min-width:260px;background:#1a6b3c;">📧 Générer + préparer e-mail</button>
       <button class="btn btn-primary" id="btnBeyne" onclick="generateBeyne()" style="min-width:260px;background:#8a4a00;display:none;">Formulaire Beyne-Heusay (Word)</button>
     </div>
   </div>
@@ -385,6 +549,8 @@ function toggleBtn(id) {
   el.querySelector(".toggle-box").textContent = on ? "✓" : "";
   if (toggleLabels[id]) el.querySelector(".toggle-label").textContent = toggleLabels[id][on ? 1 : 0];
   checkCanProceed();
+  if(typeof saveDraft==="function")saveDraft();
+  if(typeof updateProgress==="function")updateProgress();
 }
 function isOn(id) { return document.getElementById(id).classList.contains("on"); }
 
@@ -432,7 +598,7 @@ function normalize(s){
 }
 
 // ─── GEOCODING ───
-let geoTimer=null, currentKey=null;
+let geoTimer=null, currentKey=null, forcedProceed=false, forcedCommuneName="";
 
 function buildAddress(){
   const rue=val("rue").trim();
@@ -472,6 +638,9 @@ function onAddressChange(){
       if(loc)params.set("city",loc);
       const r=await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`,{headers:{"Accept-Language":"fr"}});
       const d=await r.json();
+      // Reset force flag whenever address changes
+      forcedProceed=false;
+      forcedCommuneName="";
       if(d.length>0){
         const a=d[0].address;
         const lat=d[0].lat, lon=d[0].lon;
@@ -490,13 +659,19 @@ function onAddressChange(){
           document.getElementById("geoStatus").innerHTML=`<div class="badge ${cls}">${txt}</div>`;
           showRules(ru);
         } else {
-          document.getElementById("geoStatus").innerHTML=`<div class="badge badge-error">Commune « ${commune} » non trouvée dans la base CILE.</div>`;
+          // Commune hors base CILE — proposer de forcer
+          document.getElementById("geoStatus").innerHTML=
+            `<div class="badge badge-warn">⚠ Commune « <strong>${commune||"inconnue"}</strong> » non trouvée dans la base CILE — hors territoire ou non répertoriée.</div>`+
+            renderForceBtn(commune||val("localite")||"Commune hors base CILE","hors-cile");
           document.getElementById("rulesPanel").classList.add("hidden");
         }
       } else {
         currentKey=null;
         hideMap();
-        document.getElementById("geoStatus").innerHTML='<div class="badge badge-error">Adresse introuvable. Vérifiez la rue et le code postal.</div>';
+        // Adresse introuvable — proposer de forcer aussi
+        document.getElementById("geoStatus").innerHTML=
+          `<div class="badge badge-warn">⚠ Adresse introuvable par le géocodeur. Vérifiez la rue et le code postal, ou forcez la validation si vous êtes sûr de l'adresse.</div>`+
+          renderForceBtn(val("localite")||"Commune non géolocalisée","introuvable");
         document.getElementById("rulesPanel").classList.add("hidden");
       }
     }catch(e){
@@ -504,6 +679,7 @@ function onAddressChange(){
       hideMap();
     }
     checkCanProceed();
+    if(typeof updateProgress==="function")updateProgress();
   },800);
 }
 
@@ -519,6 +695,28 @@ function showRules(ru){
   if(ru.notes)h+=`<em>${ru.notes}</em>`;
   p.innerHTML=`<div class="rules-panel">${h}</div>`;
   p.classList.remove("hidden");
+}
+
+function renderForceBtn(communeName, reason){
+  const safe=communeName.replace(/"/g,'&quot;');
+  const label=reason==="hors-cile"
+    ? "Forcer la validation (commune hors CILE)"
+    : "Forcer la validation (adresse non géolocalisée)";
+  return `<div style="margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <button type="button" class="btn btn-secondary" style="padding:7px 14px;font-size:12.5px;background:#f0c060;color:#5a3a00;" onclick="forceProceed('${safe}')">⚠ ${label}</button>
+    <span style="font-size:11.5px;color:var(--text-dim);">Le document Word sera généré sans exigences communales spécifiques.</span>
+  </div>`;
+}
+
+function forceProceed(communeName){
+  forcedProceed=true;
+  forcedCommuneName=communeName||"Commune non spécifiée";
+  currentKey=null; // pas de fiche CILE applicable
+  document.getElementById("geoStatus").innerHTML=
+    `<div class="badge badge-warn">✓ <strong>Validation forcée</strong> — Commune : « ${forcedCommuneName} ». Aucune règle CILE ne sera appliquée. À vous de vérifier la procédure communale.</div>`;
+  document.getElementById("rulesPanel").classList.add("hidden");
+  checkCanProceed();
+  if(typeof updateProgress==="function")updateProgress();
 }
 
 function showMap(lat,lon){
@@ -568,6 +766,8 @@ const CILE_CP = {
   "4101":["seraing"], // Jemeppe
   "4102":["seraing"], // Ougrée
   "4000":["liege"],
+  "4001":["liege"],"4002":["liege"],"4003":["liege"],"4004":["liege"],"4005":["liege"],
+  "4010":["liege"],"4011":["liege"],"4012":["liege"],"4013":["liege"],
   "4020":["liege"],
   "4030":["liege"],
   "4031":["liege"], // Angleur
@@ -601,9 +801,6 @@ const CILE_CP = {
   "4560":["marchin"],
   "4577":["modave"],
   "4557":["tinlot"],
-  // Additional sections
-  "4000":["liege"],"4001":["liege"],"4002":["liege"],"4003":["liege"],"4004":["liege"],"4005":["liege"],
-  "4010":["liege"],"4011":["liege"],"4012":["liege"],"4013":["liege"],
 };
 
 function validateCodePostal(){
@@ -638,6 +835,15 @@ function validateCodePostal(){
 
   validCp=true;
   el.classList.remove("field-error");
+  // Aperçu rapide de la commune à partir du CP — avant géocodage complet
+  if(!currentKey){
+    const previewKey=CILE_CP[v][0];
+    const ru=C[previewKey];
+    if(ru){
+      document.getElementById("geoStatus").innerHTML=
+        `<div class="badge badge-info">💡 Aperçu : <strong>${ru.nom}</strong> (basé sur le CP) — complétez la rue pour confirmer.</div>`;
+    }
+  }
   checkCanProceed();
 }
 
@@ -723,6 +929,38 @@ document.addEventListener("DOMContentLoaded",()=>{
   const today=new Date().toISOString().slice(0,10);
   document.getElementById("dateDebut").setAttribute("min",today);
   document.getElementById("dateFin").setAttribute("min",today);
+
+  // Theme
+  loadTheme();
+
+  // Autosave listeners + progress on every input
+  const allIds=FORM_IDS.concat(TOGGLE_IDS);
+  FORM_IDS.forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    el.addEventListener("input",()=>{saveDraft();updateProgress();});
+    el.addEventListener("change",()=>{saveDraft();updateProgress();});
+  });
+
+  // Restore draft if present (ask once)
+  const draft=getDraft();
+  if(draft&&draft.fields){
+    const hasContent=Object.values(draft.fields).some(v=>v&&v.trim&&v.trim());
+    if(hasContent){
+      if(confirm("Un brouillon précédent a été trouvé. Le restaurer ?")){
+        restoreForm(draft);
+      } else {
+        clearDraft();
+      }
+    }
+  }
+
+  // Load saved prefs (responsable)
+  loadPrefs();
+
+  // Initial progress
+  updateProgress();
+  updateDraftIndicator();
 });
 
 function getHoraire(){
@@ -732,7 +970,7 @@ function getHoraire(){
 }
 
 function checkCanProceed(){
-  const ok=currentKey
+  const ok=(currentKey || forcedProceed)
     && val("rue").trim()
     && (val("codePostal").trim() || val("localite").trim())
     && val("dateDebut")
@@ -753,9 +991,702 @@ function checkCanProceed(){
   document.getElementById(id).addEventListener("change",validateDates);
 });
 
+// ─── PERSISTENCE : brouillon + historique + préférences ───
+const LS_DRAFT="cile_draft_v1";
+const LS_HISTORY="cile_history_v1";
+const LS_PREFS="cile_prefs_v1";
+const LS_THEME="cile_theme_v1";
+const FORM_IDS=["rue","numero","codePostal","localite","numPowalco","dateDebut","dateFin","heureDe","heureA","typeIntervention","natureTravaux","description","nuisances","responsable","telResponsable","soustraitant"];
+const TOGGLE_IDS=["togRouteReg","togUrgence","togRouteBloquee","togDeviation","togDebordChaussee","togDebordTrottoir","togFeux","togArretBus"];
+
+function serializeForm(){
+  const data={fields:{},toggles:{},_ts:Date.now()};
+  FORM_IDS.forEach(id=>{const el=document.getElementById(id);if(el)data.fields[id]=el.value;});
+  TOGGLE_IDS.forEach(id=>{data.toggles[id]=isOn(id);});
+  return data;
+}
+function restoreForm(data){
+  if(!data||!data.fields)return;
+  FORM_IDS.forEach(id=>{const el=document.getElementById(id);if(el&&data.fields[id]!==undefined)el.value=data.fields[id];});
+  TOGGLE_IDS.forEach(id=>{
+    const el=document.getElementById(id);
+    const on=!!(data.toggles&&data.toggles[id]);
+    el.classList.toggle("on",on);
+    el.querySelector(".toggle-box").textContent=on?"✓":"";
+    if(toggleLabels[id])el.querySelector(".toggle-label").textContent=toggleLabels[id][on?1:0];
+  });
+  // Recompose address and trigger geocoding
+  onAddressChange();
+  validateCodePostal();
+  validateDates();
+  validatePhone();
+  validateHoraire();
+}
+
+let draftTimer=null;
+function saveDraft(){
+  clearTimeout(draftTimer);
+  draftTimer=setTimeout(()=>{
+    try{localStorage.setItem(LS_DRAFT,JSON.stringify(serializeForm()));}catch(e){}
+    updateDraftIndicator();
+  },500);
+}
+function updateDraftIndicator(){
+  const el=document.getElementById("draftIndicator");
+  if(!el)return;
+  const d=getDraft();
+  if(d&&d._ts){
+    const when=new Date(d._ts).toLocaleTimeString("fr-BE",{hour:"2-digit",minute:"2-digit"});
+    el.innerHTML=`💾 Brouillon sauvegardé à ${when}`;
+  } else {
+    el.innerHTML="";
+  }
+}
+function getDraft(){try{return JSON.parse(localStorage.getItem(LS_DRAFT)||"null");}catch(e){return null;}}
+function clearDraft(){localStorage.removeItem(LS_DRAFT);updateDraftIndicator();}
+
+// ─── HISTORIQUE ───
+function getHistory(){try{return JSON.parse(localStorage.getItem(LS_HISTORY)||"[]");}catch(e){return [];}}
+function pushHistory(label){
+  const h=getHistory();
+  const entry={label:label||(val("typeIntervention")+" — "+buildAddress()).substring(0,80),data:serializeForm(),_ts:Date.now()};
+  h.unshift(entry);
+  while(h.length>10)h.pop();
+  localStorage.setItem(LS_HISTORY,JSON.stringify(h));
+}
+function openHistory(){
+  const h=getHistory();
+  if(h.length===0){alert("Aucune demande récente enregistrée.");return;}
+  const html=h.map((e,i)=>{
+    const when=new Date(e._ts).toLocaleDateString("fr-BE",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+    return `<div class="history-item" onclick="loadHistory(${i})"><div class="history-label">${esc(e.label)}</div><div class="history-date">${when}</div></div>`;
+  }).join("");
+  document.getElementById("historyList").innerHTML=html;
+  document.getElementById("historyModal").classList.remove("hidden");
+}
+function loadHistory(i){
+  const h=getHistory();
+  if(!h[i])return;
+  restoreForm(h[i].data);
+  closeHistory();
+}
+function closeHistory(){document.getElementById("historyModal").classList.add("hidden");}
+
+// ─── PRÉFÉRENCES (responsable) ───
+function savePrefs(){
+  try{localStorage.setItem(LS_PREFS,JSON.stringify({
+    responsable:val("responsable"),
+    telResponsable:val("telResponsable")
+  }));}catch(e){}
+}
+function loadPrefs(){
+  try{
+    const p=JSON.parse(localStorage.getItem(LS_PREFS)||"null");
+    if(p){
+      if(p.responsable&&!val("responsable"))document.getElementById("responsable").value=p.responsable;
+      if(p.telResponsable&&!val("telResponsable"))document.getElementById("telResponsable").value=p.telResponsable;
+    }
+  }catch(e){}
+}
+
+// ─── MODÈLES D'INTERVENTION ───
+const TEMPLATES={
+  "fuite":{
+    label:"🚨 Fuite urgente",
+    typeIntervention:"Réparation de fuite",
+    natureTravaux:"Réparation de fuite sur conduite",
+    description:"Intervention de réparation d'une fuite détectée sur le réseau de distribution d'eau. Fouille ponctuelle et réfection de voirie.",
+    nuisances:"Bruit, poussière, coupure d'eau temporaire pour riverains concernés",
+    toggles:{togUrgence:true,togDebordChaussee:true}
+  },
+  "raccordement":{
+    label:"💧 Nouveau raccordement",
+    typeIntervention:"Nouveau raccordement",
+    natureTravaux:"Pose d'un nouveau raccordement particulier",
+    description:"Pose d'un nouveau raccordement d'eau potable depuis la conduite principale vers l'immeuble. Tranchée transversale et réfection voirie/trottoir.",
+    nuisances:"Bruit, poussière, occupation temporaire du trottoir et d'une bande de chaussée",
+    toggles:{togDebordChaussee:true,togDebordTrottoir:true}
+  },
+  "renouvellement":{
+    label:"🔧 Renouvellement conduite",
+    typeIntervention:"Renouvellement de conduite",
+    natureTravaux:"Renouvellement de conduite DN150 en fonte",
+    description:"Renouvellement d'une section de conduite de distribution d'eau. Fouille linéaire, pose de nouvelle conduite, branchements individuels refaits, réfection voirie.",
+    nuisances:"Bruit, poussière, circulation perturbée, coupures d'eau programmées",
+    toggles:{togRouteBloquee:true,togDeviation:true,togDebordChaussee:true}
+  },
+  "compteur":{
+    label:"📊 Pose de compteur",
+    typeIntervention:"Pose de compteur",
+    natureTravaux:"Installation/remplacement de compteur d'eau",
+    description:"Intervention ponctuelle de pose ou remplacement de compteur d'eau. Courte durée.",
+    nuisances:"Coupure d'eau très brève",
+    toggles:{togDebordTrottoir:true}
+  },
+  "entretien":{
+    label:"🔍 Entretien préventif",
+    typeIntervention:"Entretien préventif",
+    natureTravaux:"Entretien préventif du réseau",
+    description:"Intervention d'entretien préventif sur équipement du réseau (vanne, bouche, chambre de visite).",
+    nuisances:"Bruit léger, occupation brève de la voirie",
+    toggles:{}
+  }
+};
+function applyTemplate(key){
+  const t=TEMPLATES[key];
+  if(!t)return;
+  document.getElementById("typeIntervention").value=t.typeIntervention;
+  document.getElementById("natureTravaux").value=t.natureTravaux;
+  document.getElementById("description").value=t.description;
+  document.getElementById("nuisances").value=t.nuisances;
+  // Reset all toggles first
+  TOGGLE_IDS.forEach(id=>{
+    const el=document.getElementById(id);
+    el.classList.remove("on");
+    el.querySelector(".toggle-box").textContent="";
+    if(toggleLabels[id])el.querySelector(".toggle-label").textContent=toggleLabels[id][0];
+  });
+  // Apply template toggles
+  Object.keys(t.toggles||{}).forEach(id=>{if(t.toggles[id])toggleBtn(id);});
+  checkCanProceed();
+  saveDraft();
+}
+
+// ─── THÈME SOMBRE ───
+function toggleTheme(){
+  const dark=!document.body.classList.contains("dark");
+  document.body.classList.toggle("dark",dark);
+  try{localStorage.setItem(LS_THEME,dark?"dark":"light");}catch(e){}
+  document.getElementById("themeBtn").textContent=dark?"☀️":"🌙";
+}
+function loadTheme(){
+  try{
+    const t=localStorage.getItem(LS_THEME);
+    if(t==="dark"){document.body.classList.add("dark");document.getElementById("themeBtn").textContent="☀️";}
+  }catch(e){}
+}
+
+// ─── JAUGE "CONDUITE QUI SE REMPLIT" ───
+function updateProgress(){
+  const required=["rue","codePostal","localite","dateDebut","dateFin","typeIntervention","responsable","telResponsable"];
+  const optional=["numero","numPowalco","natureTravaux","description","nuisances","soustraitant"];
+  let filled=0, total=required.length+optional.length;
+  required.forEach(id=>{if(val(id)&&val(id).trim())filled++;});
+  optional.forEach(id=>{if(val(id)&&val(id).trim())filled+=0.5;});
+  // Bonus: commune détectée ou forcée
+  if(currentKey||forcedProceed)filled+=2;
+  total+=optional.length*0.5+2; // coherent maximum
+  const pct=Math.min(100,Math.round((filled/total)*100));
+  const groupEl=document.getElementById("waterGroup");
+  const pctEl=document.getElementById("waterPct");
+  if(groupEl){
+    // y=100 means fully hidden (below viewbox), y=0 means fully shown
+    // We translate from 100 (0%) down to 0 (100%)
+    const y=100-pct;
+    groupEl.setAttribute("transform",`translate(0,${y})`);
+  }
+  if(pctEl)pctEl.textContent=pct;
+}
+
+// ─── EXPORT TEXTE BRUT DU RÉCAP ───
+function exportRecapText(){
+  const ru=getFicheCommune();
+  const lines=[
+    "DEMANDE D'AUTORISATION VOIRIE — "+ru.nom,
+    "═".repeat(50),
+    "",
+    "ADRESSE DU CHANTIER",
+    "  "+buildAddress(),
+    val("numPowalco")?"  N° Powalco : "+val("numPowalco"):"",
+    isOn("togRouteReg")?"  Route régionale — SPW en copie":"",
+    "",
+    "PLANNING",
+    "  Du "+val("dateDebut")+" au "+val("dateFin"),
+    "  Horaire : "+getHoraire(),
+    "",
+    "NATURE DES TRAVAUX",
+    "  Type : "+val("typeIntervention"),
+    val("natureTravaux")?"  Nature : "+val("natureTravaux"):"",
+    val("description")?"  Description : "+val("description"):"",
+    val("nuisances")?"  Nuisances : "+val("nuisances"):"",
+    "",
+    "IMPACT",
+    "  Urgence : "+(isOn("togUrgence")?"OUI":"Non"),
+    "  Route bloquée : "+(isOn("togRouteBloquee")?"OUI":"Non"),
+    "  Déviation : "+(isOn("togDeviation")?"OUI":"Non"),
+    "  Débord chaussée : "+(isOn("togDebordChaussee")?"Oui":"Non"),
+    "  Débord trottoir : "+(isOn("togDebordTrottoir")?"Oui":"Non"),
+    "  Feux impactés : "+(isOn("togFeux")?"Oui":"Non"),
+    "  Arrêt de bus : "+(isOn("togArretBus")?"Oui":"Non"),
+    "",
+    "RESPONSABLE",
+    "  "+val("responsable")+" — "+val("telResponsable"),
+    val("soustraitant")?"  Sous-traitant : "+val("soustraitant"):"",
+    "",
+    "CILE — Compagnie Intercommunale Liégeoise des Eaux",
+    "Rue du Canal de l'Ourthe, 8 — 4031 Angleur"
+  ].filter(Boolean).join("\n");
+  navigator.clipboard.writeText(lines).then(()=>{
+    const b=document.getElementById("btnCopyRecap");
+    if(b){const old=b.textContent;b.textContent="✓ Copié !";setTimeout(()=>b.textContent=old,2000);}
+  }).catch(()=>alert("Copie impossible — texte affiché en console."));
+}
+
+
+// ─── ANALYTIQUE : stockage structuré des demandes ───
+const LS_ANALYTICS="cile_analytics_v1";
+function getAnalytics(){try{return JSON.parse(localStorage.getItem(LS_ANALYTICS)||"[]");}catch(e){return [];}}
+function calcDuration(){
+  const d1=val("dateDebut"),d2=val("dateFin");
+  if(!d1||!d2)return 0;
+  return Math.max(1,Math.round((new Date(d2)-new Date(d1))/86400000));
+}
+function recordGeneration(extra){
+  const a=getAnalytics();
+  const entry={
+    id:"gen_"+Date.now()+"_"+Math.random().toString(36).slice(2,7),
+    ts:Date.now(),
+    commune:(extra&&extra.commune)||(currentKey&&C[currentKey]&&C[currentKey].nom)||(forcedCommuneName||"Inconnue"),
+    codePostal:val("codePostal")||"",
+    adresse:buildAddress(),
+    typeIntervention:val("typeIntervention")||"",
+    natureTravaux:val("natureTravaux")||"",
+    dateDebut:val("dateDebut")||"",
+    dateFin:val("dateFin")||"",
+    durationDays:(extra&&extra.durationDays)||calcDuration(),
+    heureDe:val("heureDe")||"",
+    heureA:val("heureA")||"",
+    urgence:(extra&&extra.urgence!==undefined)?extra.urgence:isOn("togUrgence"),
+    routeBloquee:isOn("togRouteBloquee"),
+    deviation:isOn("togDeviation"),
+    debordChaussee:isOn("togDebordChaussee"),
+    debordTrottoir:isOn("togDebordTrottoir"),
+    feuxImpactes:isOn("togFeux"),
+    arretBusImpacte:isOn("togArretBus"),
+    routeRegionale:isOn("togRouteReg"),
+    responsable:val("responsable")||"",
+    soustraitant:val("soustraitant")||"",
+    numPowalco:val("numPowalco")||""
+  };
+  a.unshift(entry);
+  // Cap à 500 demandes (mémoire raisonnable)
+  while(a.length>500)a.pop();
+  try{localStorage.setItem(LS_ANALYTICS,JSON.stringify(a));}catch(e){console.warn("Analytics save failed:",e);}
+  return entry;
+}
+
+// ─── ENVOI PAR MAIL avec pièce jointe ───
+// Limitation fondamentale : mailto: ne peut PAS attacher de pièce jointe (limitation OS/sécurité navigateur).
+// Solution adoptée : on ouvre le client mail (mailto:) avec destinataire/sujet/corps pré-remplis,
+// ET on place le fichier dans le presse-papiers quand possible, avec une boîte de dialogue qui
+// explique que le fichier est à attacher manuellement (guide visuel).
+// Alternative plus propre : Web Share API (mobile) permet d'attacher via share sheet.
+async function offerEmail(opts){
+  // opts: {to, cc, subject, body, blob, filename}
+  // Stratégie desktop : copier le fichier dans le presse-papier + ouvrir Gmail web compose.
+  //                    L'utilisateur colle avec Cmd/Ctrl+V dans Gmail → PJ attachée !
+  // Stratégie mobile  : Web Share API avec files (iOS/Android natif).
+
+  // Détecter Web Share avec fichiers (principalement mobile)
+  let canShareFiles=false;
+  try{
+    if(navigator.canShare && opts.blob){
+      const testFile=new File([opts.blob],opts.filename,{type:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+      canShareFiles=navigator.canShare({files:[testFile]});
+    }
+  }catch(e){canShareFiles=false;}
+
+  // Détecter si on peut copier un Blob dans le clipboard (Chrome/Edge desktop récent)
+  const canClipboardBlob=!!(navigator.clipboard && window.ClipboardItem);
+
+  // Create modal
+  const m=document.createElement("div");
+  m.className="modal";
+  m.style.zIndex="2000";
+  m.innerHTML=`
+    <div class="modal-content" style="max-width:620px;">
+      <div class="modal-header">
+        <div class="modal-title">📧 Envoyer par mail</div>
+        <button class="modal-close" onclick="this.closest('.modal').remove()">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:13.5px;margin-bottom:14px;">Le document a été téléchargé. Choisissez comment l'envoyer :</p>
+        <div style="background:var(--card-alt);padding:12px 14px;border-radius:7px;margin-bottom:14px;font-size:12.5px;">
+          <div><strong>À :</strong> ${esc(opts.to||"")}</div>
+          ${opts.cc?`<div style="margin-top:4px;"><strong>CC :</strong> ${esc(opts.cc)}</div>`:""}
+          <div style="margin-top:4px;"><strong>Objet :</strong> ${esc(opts.subject||"")}</div>
+          <div style="margin-top:4px;"><strong>Pièce jointe :</strong> <code style="background:#fff;padding:2px 6px;border-radius:3px;">${esc(opts.filename||"")}</code></div>
+        </div>
+
+        ${canClipboardBlob?`
+          <div style="margin-bottom:14px;padding:12px;border:2px solid #2a7a2a;border-radius:8px;background:#f0f9f0;">
+            <div style="font-weight:700;color:#2a7a2a;margin-bottom:6px;">✨ Méthode recommandée (desktop)</div>
+            <button class="btn btn-primary" id="emGmail" style="width:100%;background:#2a7a2a;margin-bottom:6px;">📧 Ouvrir Gmail + copier la PJ → Coller (Cmd/Ctrl+V)</button>
+            <div style="font-size:11.5px;color:#2a5a2a;">Le fichier est copié dans le presse-papier et Gmail s'ouvre pré-rempli. Placez votre curseur dans le corps du mail et collez (Cmd+V sur Mac, Ctrl+V sur PC) — la pièce jointe s'attache automatiquement.</div>
+          </div>` : ``}
+
+        ${canShareFiles?`
+          <div style="margin-bottom:12px;">
+            <button class="btn btn-primary" id="emShare" style="width:100%;">📤 Partager natif (mobile)</button>
+            <div style="font-size:11.5px;color:var(--text-dim);margin-top:4px;">Utilise la feuille de partage du système (iOS / Android).</div>
+          </div>` : ``}
+
+        <div style="margin-bottom:10px;">
+          <button class="btn btn-secondary" id="emMailto" style="width:100%;background:#1a4a7a;color:#fff;">✉️ Mail classique (mailto — sans PJ)</button>
+          <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">Ouvre votre client mail par défaut. Le fichier est dans votre dossier <em>Téléchargements</em> — à attacher manuellement.</div>
+        </div>
+        <div>
+          <button class="btn btn-secondary" id="emCopyBody" style="width:100%;font-size:12px;padding:8px;">📋 Copier juste le corps du mail</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+
+  // Bouton Gmail + clipboard (desktop)
+  const gmailBtn=m.querySelector("#emGmail");
+  if(gmailBtn){
+    gmailBtn.onclick=async()=>{
+      try{
+        // Copier le blob dans le presse-papier
+        const item=new ClipboardItem({[opts.blob.type]:opts.blob});
+        await navigator.clipboard.write([item]);
+        // Ouvrir Gmail compose
+        const gmailUrl="https://mail.google.com/mail/?view=cm&fs=1"+
+          "&to="+encodeURIComponent(opts.to||"")+
+          (opts.cc?"&cc="+encodeURIComponent(opts.cc):"")+
+          "&su="+encodeURIComponent(opts.subject||"")+
+          "&body="+encodeURIComponent(opts.body||"");
+        window.open(gmailUrl,"_blank");
+        // Feedback visuel
+        gmailBtn.textContent="✓ PJ dans le presse-papier — Collez dans Gmail (Cmd/Ctrl+V)";
+        gmailBtn.style.background="#1a4a7a";
+      }catch(err){
+        console.error("Clipboard blob error:",err);
+        alert("Impossible de copier le fichier dans le presse-papier sur ce navigateur. Utilisez plutôt la méthode classique ci-dessous : le fichier est dans Téléchargements, glissez-le dans Gmail.");
+        // Fallback : juste ouvrir Gmail
+        const gmailUrl="https://mail.google.com/mail/?view=cm&fs=1"+
+          "&to="+encodeURIComponent(opts.to||"")+
+          (opts.cc?"&cc="+encodeURIComponent(opts.cc):"")+
+          "&su="+encodeURIComponent(opts.subject||"")+
+          "&body="+encodeURIComponent(opts.body||"");
+        window.open(gmailUrl,"_blank");
+      }
+    };
+  }
+
+  // Web Share API (mobile)
+  const shareBtn=m.querySelector("#emShare");
+  if(shareBtn){
+    shareBtn.onclick=async()=>{
+      try{
+        const file=new File([opts.blob],opts.filename,{type:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+        await navigator.share({title:opts.subject,text:opts.body,files:[file]});
+        m.remove();
+      }catch(err){
+        if(err.name!=="AbortError"){
+          alert("Le partage natif n'est pas disponible sur ce navigateur. Essayez plutôt la méthode Gmail ci-dessus.");
+        }
+      }
+    };
+  }
+  m.querySelector("#emMailto").onclick=()=>{
+    const mailto="mailto:"+encodeURIComponent(opts.to||"")+
+      "?"+(opts.cc?"cc="+encodeURIComponent(opts.cc)+"&":"")+
+      "subject="+encodeURIComponent(opts.subject||"")+
+      "&body="+encodeURIComponent(opts.body||"");
+    window.location.href=mailto;
+  };
+  m.querySelector("#emCopyBody").onclick=()=>{
+    navigator.clipboard.writeText(opts.body||"").then(()=>{
+      m.querySelector("#emCopyBody").textContent="✓ Copié !";
+      setTimeout(()=>m.querySelector("#emCopyBody")&&(m.querySelector("#emCopyBody").textContent="📋 Copier le corps du mail"),2000);
+    });
+  };
+}
+
+// ─── CORPS DE MAIL PRÉ-REMPLI ───
+function buildEmailBody(context){
+  const ru=getFicheCommune();
+  const addr=buildAddress();
+  const fmtD=d=>{if(!d)return"";const[y,m,day]=d.split("-");return day+"/"+m+"/"+y;};
+  const d1=fmtD(val("dateDebut")),d2=fmtD(val("dateFin"));
+  const urg=isOn("togUrgence");
+
+  let greeting="Madame, Monsieur,";
+  if(context==="beyne"){greeting="Madame, Monsieur du Service Mobilité,";}
+
+  let body=greeting+"\n\n";
+  if(urg){
+    body+="Dans le cadre d'une intervention URGENTE sur le réseau de distribution d'eau, ";
+  } else {
+    body+="Dans le cadre de travaux sur le réseau de distribution d'eau, ";
+  }
+  body+="la Compagnie Intercommunale Liégeoise des Eaux (CILE) souhaite obtenir l'autorisation d'ouverture de voirie suivante :\n\n";
+
+  body+="• Localisation : "+addr+"\n";
+  body+="• Commune : "+ru.nom+"\n";
+  body+="• Type d'intervention : "+val("typeIntervention")+"\n";
+  if(val("natureTravaux"))body+="• Nature : "+val("natureTravaux")+"\n";
+  body+="• Période : du "+d1+" au "+d2+"\n";
+  body+="• Horaires : "+getHoraire()+"\n";
+  if(val("numPowalco"))body+="• N° Powalco : "+val("numPowalco")+"\n";
+  if(val("nuisances"))body+="• Nuisances prévues : "+val("nuisances")+"\n";
+
+  // Impacts
+  const impacts=[];
+  if(isOn("togRouteBloquee"))impacts.push("route bloquée");
+  if(isOn("togDeviation"))impacts.push("déviation prévue");
+  if(isOn("togDebordChaussee"))impacts.push("empiètement chaussée");
+  if(isOn("togDebordTrottoir"))impacts.push("empiètement trottoir");
+  if(isOn("togFeux"))impacts.push("feux impactés");
+  if(isOn("togArretBus"))impacts.push("arrêt de bus impacté");
+  if(impacts.length)body+="• Impact circulation : "+impacts.join(", ")+"\n";
+
+  body+="\nVeuillez trouver ci-joint le document officiel de demande, accompagné du plan de signalisation.\n\n";
+  if(urg){
+    body+="Compte tenu du caractère urgent de l'intervention, nous vous remercions de bien vouloir traiter cette demande dans les meilleurs délais.\n\n";
+  } else {
+    body+="Je reste à votre disposition pour toute information complémentaire.\n\n";
+  }
+
+  body+="Cordialement,\n\n";
+  body+=val("responsable")+"\n";
+  body+="CILE — Service Travaux\n";
+  body+="Tél : "+val("telResponsable")+"\n";
+  body+="travaux@cile.be";
+
+  return body;
+}
+
+// ─── DASHBOARD ANALYTIQUE ───
+function openDashboard(){
+  const data=getAnalytics();
+  const m=document.createElement("div");
+  m.className="modal";
+  m.id="dashboardModal";
+  m.onclick=(e)=>{if(e.target===m)m.remove();};
+  m.innerHTML=`<div class="modal-content" style="max-width:1100px;width:96%;max-height:92vh;">
+    <div class="modal-header">
+      <div class="modal-title">📊 Dashboard analytique — CILE</div>
+      <button class="modal-close" onclick="this.closest('.modal').remove()">×</button>
+    </div>
+    <div class="modal-body" id="dashBody"></div>
+    <div class="modal-footer">
+      <span style="font-size:11.5px;color:var(--text-dim);">${data.length} demande${data.length>1?"s":""} enregistrée${data.length>1?"s":""} — <button onclick="exportAnalyticsCSV()" style="background:none;border:none;color:var(--accent);cursor:pointer;text-decoration:underline;font-size:11.5px;">Exporter CSV</button></span>
+      <button class="btn btn-secondary" onclick="if(confirm('Effacer toutes les données analytiques ? Cette action est irréversible.')){localStorage.removeItem(LS_ANALYTICS);this.closest('.modal').remove();}" style="padding:7px 14px;font-size:12px;">🗑 Tout effacer</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  renderDashboard(data);
+}
+
+function renderDashboard(data){
+  const body=document.getElementById("dashBody");
+  if(!data||data.length===0){
+    body.innerHTML='<div style="padding:40px;text-align:center;color:var(--text-dim);"><div style="font-size:40px;margin-bottom:10px;">📊</div><div>Aucune demande enregistrée pour le moment.</div><div style="font-size:12px;margin-top:10px;">Les statistiques apparaîtront après la première génération de document.</div></div>';
+    return;
+  }
+
+  const now=new Date();
+  const thisMonth=now.getMonth(), thisYear=now.getFullYear();
+  const dataMonth=data.filter(d=>{const dt=new Date(d.ts);return dt.getMonth()===thisMonth&&dt.getFullYear()===thisYear;});
+  const dataYear=data.filter(d=>new Date(d.ts).getFullYear()===thisYear);
+  const data30d=data.filter(d=>(now-d.ts)<30*86400000);
+
+  // KPIs principaux
+  function kpiCard(label,value,sub){
+    return `<div class="dash-kpi">
+      <div class="dash-kpi-value">${value}</div>
+      <div class="dash-kpi-label">${label}</div>
+      ${sub?'<div class="dash-kpi-sub">'+sub+'</div>':''}
+    </div>`;
+  }
+
+  const urgences=data.filter(d=>d.urgence);
+  const urgences30d=data30d.filter(d=>d.urgence);
+  const pctUrg=data.length?Math.round(urgences.length/data.length*100):0;
+  const avgDur=data.length?(data.reduce((s,d)=>s+(d.durationDays||0),0)/data.length).toFixed(1):0;
+
+  let html=`<div class="dash-kpis">
+    ${kpiCard("Ce mois",dataMonth.length,dataMonth.filter(d=>d.urgence).length+" urgence"+(dataMonth.filter(d=>d.urgence).length>1?"s":""))}
+    ${kpiCard("Cette année",dataYear.length,"")}
+    ${kpiCard("Total",data.length,"depuis le début")}
+    ${kpiCard("Urgences",pctUrg+"%",urgences.length+" / "+data.length+" demandes")}
+    ${kpiCard("Durée moy.",avgDur+" j","par chantier")}
+    ${kpiCard("30 derniers jours",data30d.length,urgences30d.length+" urgence"+(urgences30d.length>1?"s":""))}
+  </div>`;
+
+  // ── Répartition par commune ──
+  const byCommune={};
+  data.forEach(d=>{byCommune[d.commune]=(byCommune[d.commune]||0);byCommune[d.commune]++;});
+  const communeEntries=Object.entries(byCommune).sort((a,b)=>b[1]-a[1]);
+  const maxC=Math.max(...communeEntries.map(e=>e[1]));
+
+  html+=`<div class="dash-section">
+    <div class="dash-section-title">🗺️ Répartition par commune</div>
+    <div class="dash-bars">`+communeEntries.map(([name,n])=>{
+      const urg=data.filter(d=>d.commune===name&&d.urgence).length;
+      return `<div class="dash-bar-row">
+        <div class="dash-bar-label">${esc(name)}</div>
+        <div class="dash-bar-wrap">
+          <div class="dash-bar" style="width:${Math.round(n/maxC*100)}%;"></div>
+          ${urg?'<div class="dash-bar-urg" style="width:'+Math.round(urg/maxC*100)+'%;"></div>':''}
+        </div>
+        <div class="dash-bar-count">${n}${urg?' <span style="color:#c00;font-size:11px;">('+urg+' urg.)</span>':''}</div>
+      </div>`;
+    }).join("")+`</div></div>`;
+
+  // ── Zones à fortes urgences ──
+  const urgByCommune={};
+  urgences.forEach(d=>{urgByCommune[d.commune]=(urgByCommune[d.commune]||0)+1;});
+  const urgTop=Object.entries(urgByCommune).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  if(urgTop.length>0){
+    html+=`<div class="dash-section">
+      <div class="dash-section-title">🚨 Top communes par urgences</div>
+      <div class="dash-grid-sm">`+urgTop.map(([name,n])=>{
+        const pct=Math.round(n/(byCommune[name]||1)*100);
+        return `<div class="dash-small-card">
+          <div style="font-weight:700;color:#c00;font-size:18px;">${n}</div>
+          <div style="font-size:12.5px;color:var(--text);">${esc(name)}</div>
+          <div style="font-size:11px;color:var(--text-dim);">${pct}% de ses demandes</div>
+        </div>`;
+      }).join("")+`</div></div>`;
+  }
+
+  // ── Types d'intervention ──
+  const byType={};
+  data.forEach(d=>{if(d.typeIntervention)byType[d.typeIntervention]=(byType[d.typeIntervention]||0)+1;});
+  const typeEntries=Object.entries(byType).sort((a,b)=>b[1]-a[1]);
+  if(typeEntries.length>0){
+    const maxT=Math.max(...typeEntries.map(e=>e[1]));
+    html+=`<div class="dash-section">
+      <div class="dash-section-title">🔧 Types d'intervention</div>
+      <div class="dash-bars">`+typeEntries.map(([name,n])=>{
+        return `<div class="dash-bar-row">
+          <div class="dash-bar-label">${esc(name)}</div>
+          <div class="dash-bar-wrap">
+            <div class="dash-bar" style="width:${Math.round(n/maxT*100)}%;background:var(--accent);"></div>
+          </div>
+          <div class="dash-bar-count">${n}</div>
+        </div>`;
+      }).join("")+`</div></div>`;
+  }
+
+  // ── Évolution mensuelle (12 derniers mois) ──
+  const months={};
+  const monthKeys=[];
+  for(let i=11;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+    const label=d.toLocaleDateString("fr-BE",{month:"short",year:"2-digit"});
+    months[k]={label,n:0,urg:0};
+    monthKeys.push(k);
+  }
+  data.forEach(d=>{
+    const dt=new Date(d.ts);
+    const k=dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0");
+    if(months[k]){months[k].n++;if(d.urgence)months[k].urg++;}
+  });
+  const maxM=Math.max(1,...monthKeys.map(k=>months[k].n));
+  html+=`<div class="dash-section">
+    <div class="dash-section-title">📈 Évolution sur 12 mois</div>
+    <div class="dash-timeline">`+monthKeys.map(k=>{
+      const m=months[k];
+      const h=Math.round(m.n/maxM*100);
+      const hu=m.n?Math.round(m.urg/m.n*h):0;
+      return `<div class="dash-timeline-col" title="${m.label}: ${m.n} demande${m.n>1?"s":""}${m.urg?" dont "+m.urg+" urgence"+(m.urg>1?"s":""):""}">
+        <div class="dash-timeline-bar-wrap">
+          <div class="dash-timeline-bar" style="height:${h}%;"></div>
+          ${m.urg?'<div class="dash-timeline-bar-urg" style="height:'+hu+'%;"></div>':''}
+        </div>
+        <div class="dash-timeline-label">${m.label}</div>
+        <div class="dash-timeline-count">${m.n||""}</div>
+      </div>`;
+    }).join("")+`</div></div>`;
+
+  // ── Statistiques impact circulation ──
+  const impactStats={
+    routeBloquee:data.filter(d=>d.routeBloquee).length,
+    deviation:data.filter(d=>d.deviation).length,
+    debordChaussee:data.filter(d=>d.debordChaussee).length,
+    debordTrottoir:data.filter(d=>d.debordTrottoir).length,
+    feuxImpactes:data.filter(d=>d.feuxImpactes).length,
+    arretBusImpacte:data.filter(d=>d.arretBusImpacte).length,
+    routeRegionale:data.filter(d=>d.routeRegionale).length,
+  };
+  html+=`<div class="dash-section">
+    <div class="dash-section-title">🚦 Impact sur la circulation</div>
+    <div class="dash-grid-sm">
+      <div class="dash-small-card"><div style="font-weight:700;font-size:18px;color:var(--accent);">${impactStats.routeBloquee}</div><div style="font-size:12px;">Routes bloquées</div></div>
+      <div class="dash-small-card"><div style="font-weight:700;font-size:18px;color:var(--accent);">${impactStats.deviation}</div><div style="font-size:12px;">Déviations</div></div>
+      <div class="dash-small-card"><div style="font-weight:700;font-size:18px;color:var(--accent);">${impactStats.debordChaussee}</div><div style="font-size:12px;">Débord. chaussée</div></div>
+      <div class="dash-small-card"><div style="font-weight:700;font-size:18px;color:var(--accent);">${impactStats.debordTrottoir}</div><div style="font-size:12px;">Débord. trottoir</div></div>
+      <div class="dash-small-card"><div style="font-weight:700;font-size:18px;color:var(--accent);">${impactStats.feuxImpactes}</div><div style="font-size:12px;">Feux impactés</div></div>
+      <div class="dash-small-card"><div style="font-weight:700;font-size:18px;color:var(--accent);">${impactStats.arretBusImpacte}</div><div style="font-size:12px;">Arrêts bus</div></div>
+      <div class="dash-small-card"><div style="font-weight:700;font-size:18px;color:#c00;">${impactStats.routeRegionale}</div><div style="font-size:12px;">Routes régionales (SPW)</div></div>
+    </div></div>`;
+
+  // ── Durées ──
+  const durations=data.filter(d=>d.durationDays>0).map(d=>d.durationDays).sort((a,b)=>a-b);
+  if(durations.length>0){
+    const med=durations[Math.floor(durations.length/2)];
+    const p90=durations[Math.floor(durations.length*0.9)];
+    const max=durations[durations.length-1];
+    html+=`<div class="dash-section">
+      <div class="dash-section-title">⏱️ Durée des chantiers</div>
+      <div class="dash-grid-sm">
+        <div class="dash-small-card"><div style="font-weight:700;font-size:18px;color:var(--accent);">${avgDur} j</div><div style="font-size:12px;">Moyenne</div></div>
+        <div class="dash-small-card"><div style="font-weight:700;font-size:18px;color:var(--accent);">${med} j</div><div style="font-size:12px;">Médiane</div></div>
+        <div class="dash-small-card"><div style="font-weight:700;font-size:18px;color:var(--accent);">${p90} j</div><div style="font-size:12px;">90e percentile</div></div>
+        <div class="dash-small-card"><div style="font-weight:700;font-size:18px;color:var(--accent);">${max} j</div><div style="font-size:12px;">Plus long</div></div>
+      </div></div>`;
+  }
+
+  // ── Dernières demandes ──
+  html+=`<div class="dash-section">
+    <div class="dash-section-title">📋 Dernières demandes (10)</div>
+    <div class="dash-table">
+      <div class="dash-tr dash-th">
+        <div>Date</div><div>Commune</div><div>Adresse</div><div>Type</div><div>Durée</div><div></div>
+      </div>`+data.slice(0,10).map(d=>{
+        const dt=new Date(d.ts);
+        const dStr=dt.toLocaleDateString("fr-BE",{day:"2-digit",month:"2-digit",year:"2-digit"});
+        return `<div class="dash-tr">
+          <div>${dStr}</div>
+          <div>${esc(d.commune)}</div>
+          <div style="font-size:11.5px;color:var(--text-sec);">${esc((d.adresse||"").substring(0,40))}</div>
+          <div style="font-size:11.5px;">${esc(d.typeIntervention||"—")}</div>
+          <div>${d.durationDays}j</div>
+          <div>${d.urgence?'<span style="color:#c00;font-size:10.5px;">🚨 URG</span>':""}</div>
+        </div>`;
+      }).join("")+`</div></div>`;
+
+  body.innerHTML=html;
+}
+
+function exportAnalyticsCSV(){
+  const data=getAnalytics();
+  if(data.length===0){alert("Aucune donnée à exporter.");return;}
+  const cols=["ts","commune","codePostal","adresse","typeIntervention","natureTravaux","dateDebut","dateFin","durationDays","urgence","routeBloquee","deviation","debordChaussee","debordTrottoir","feuxImpactes","arretBusImpacte","routeRegionale","responsable","numPowalco"];
+  const header=cols.join(";");
+  const rows=data.map(d=>cols.map(c=>{
+    let v=d[c];
+    if(c==="ts")v=new Date(v).toISOString();
+    if(typeof v==="boolean")v=v?"OUI":"non";
+    v=String(v==null?"":v).replace(/"/g,'""');
+    return '"'+v+'"';
+  }).join(";"));
+  const csv="\uFEFF"+header+"\n"+rows.join("\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;
+  a.download="CILE_analytics_"+new Date().toISOString().slice(0,10)+".csv";
+  a.click();URL.revokeObjectURL(url);
+}
+
 // ─── STEPS ───
 function goStep(s){
-  if(s===1 && !currentKey)return;
+  if(s===1 && !currentKey && !forcedProceed)return;
   document.getElementById("step0").classList.toggle("hidden",s!==0);
   document.getElementById("step1").classList.toggle("hidden",s!==1);
   document.getElementById("stepBtn0").className="step-btn "+(s===0?"active":"done");
@@ -767,8 +1698,29 @@ function goStep(s){
   }
 }
 
+function getFicheCommune(){
+  // Returns the CILE rules object — either from base or a fallback for forced mode
+  if(currentKey && C[currentKey]) return C[currentKey];
+  return {
+    nom: forcedCommuneName||val("localite")||"Commune non spécifiée",
+    ok: null,
+    plan: "À vérifier auprès de la commune",
+    delai: "À vérifier auprès de la commune",
+    urgence: "À vérifier",
+    plateforme: "À vérifier (Powalco par défaut)",
+    infos: [],
+    planSign: false,
+    formatPlan: "",
+    ordre: "",
+    contacts: [],
+    notes: "⚠ Cette commune n'est pas répertoriée dans la base CILE. Le document est généré sans exigences spécifiques — vérifiez la procédure communale avant envoi.",
+    redevance: null,
+    _forced: true
+  };
+}
+
 function buildRecap(){
-  const ru=C[currentKey];
+  const ru=getFicheCommune();
   const adresseComplete=buildAddress();
   document.getElementById("recapTitle").textContent=`Récapitulatif — ${ru.nom}`;
   const rows=[
@@ -967,6 +1919,8 @@ function resetForm(){
   document.getElementById("horaireWarn").className="duration-warn";
   validCp=true;validDates=true;validPhone=true;
   currentKey=null;
+  forcedProceed=false;
+  forcedCommuneName="";
   checkCanProceed();
 }
 
@@ -1028,11 +1982,15 @@ function hrLine(color){
   return `<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="8" w:color="${color||NAVY}"/></w:pBdr><w:spacing w:after="200"/></w:pPr></w:p>`;
 }
 
-async function generate(){
-  const btn=document.getElementById("btnGenerate");
-  btn.disabled=true;btn.textContent="Génération en cours…";
+async function generate(withMail=false){
+  const btnG=document.getElementById("btnGenerate");
+  const btnGM=document.getElementById("btnGenerateMail");
+  const btn=withMail?btnGM:btnG;
+  if(btnG){btnG.disabled=true;}
+  if(btnGM){btnGM.disabled=true;}
+  btn.textContent="Génération en cours…";
 
-  const ru=C[currentKey];
+  const ru=getFicheCommune();
   const today=new Date();
   const dateStr=today.toLocaleDateString("fr-BE",{day:"2-digit",month:"long",year:"numeric"});
   const addr=buildAddress();
@@ -1172,42 +2130,30 @@ async function generate(){
   const signPlans=plans.filter(p=>p.signCount>=0);
 
   if(signPlans.length>0){
-    // Embed each plan as an image in the docx
-    signPlans.forEach((pl,idx)=>{
+    // Embed each plan as an image in the docx — await proper image loading for real dimensions
+    for(let idx=0;idx<signPlans.length;idx++){
+      const pl=signPlans[idx];
       if(idx>0)body+=p("",{after:100});
       body+=p(`Plan ${idx+1} - ${esc(pl.label)}`,{bold:true,size:18,color:GREY,after:60});
-      // Compute image dimensions — use full page width (A4 = ~17cm usable) and proportional height
-      // EMU = English Metric Units: 1 cm = 360000 EMU, usable width ~16cm = 5760000 EMU
-      const imgEl=new Image();
-      const maxCx=5760000; // ~16cm wide
-      let cx=maxCx, cy=Math.round(maxCx*0.65); // default 65% ratio
-      // Try to get actual aspect ratio from the dataUrl
-      try{
-        const tmpImg=document.createElement("img");
-        tmpImg.src=pl.dataUrl;
-        if(tmpImg.naturalWidth&&tmpImg.naturalHeight){
-          const ratio=tmpImg.naturalHeight/tmpImg.naturalWidth;
-          cy=Math.round(maxCx*ratio);
-          // Cap height to ~22cm (7920000 EMU) to fit on page
-          if(cy>7920000){cx=Math.round(7920000/ratio);cy=7920000;}
-        }
-      }catch(e){}
+      // Use computeImageEmu to respect real aspect ratio and native resolution
+      // Max width = 17cm (6120000 EMU), max height = 24cm (8640000 EMU) for landscape plans
+      const dims=await computeImageEmu(pl.dataUrl,6120000,8640000);
       body+=`<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="200"/></w:pPr>
         <w:r><w:rPr><w:noProof/></w:rPr>
         <w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">
-          <wp:extent cx="${cx}" cy="${cy}"/>
+          <wp:extent cx="${dims.cx}" cy="${dims.cy}"/>
           <wp:docPr id="${idx+10}" name="Plan${idx+1}"/>
           <a:graphic>
             <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
               <pic:pic>
                 <pic:nvPicPr><pic:cNvPr id="${idx+10}" name="plan${idx+1}.png"/><pic:cNvPicPr/></pic:nvPicPr>
                 <pic:blipFill><a:blip r:embed="rIdPlan${idx}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>
-                <pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>
+                <pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${dims.cx}" cy="${dims.cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>
               </pic:pic>
             </a:graphicData>
           </a:graphic>
         </wp:inline></w:drawing></w:r></w:p>`;
-    });
+    }
   } else {
     // No plans — show placeholder
     body+=`<w:tbl><w:tblPr><w:tblW w:w="10000" w:type="dxa"/><w:tblBorders>
@@ -1265,6 +2211,54 @@ async function generate(){
   body+=p(val("responsable"),{bold:true,size:20,color:NAVY,after:20});
   body+=p(`Service Travaux  —  ${val("telResponsable")}`,{size:17,color:GREY,after:40});
 
+  // ── QR CODE (gadget) — pointe vers le numéro Powalco ou info générale ──
+  let qrDataUrl=null;
+  try{
+    const qrPayload=val("numPowalco")
+      ? `https://www.powalco.be/public/chantiers?search=${encodeURIComponent(val("numPowalco"))}`
+      : `CILE ${ref}\n${buildAddress()}\n${val("dateDebut")} → ${val("dateFin")}\n${val("responsable")} — ${val("telResponsable")}`;
+    const qrDiv=document.createElement("div");
+    qrDiv.style.cssText="position:absolute;left:-9999px;top:-9999px;";
+    document.body.appendChild(qrDiv);
+    new QRCode(qrDiv,{text:qrPayload,width:140,height:140,correctLevel:QRCode.CorrectLevel.M});
+    // QRCode draws to a <canvas> or <img> — wait a tick
+    await new Promise(r=>setTimeout(r,80));
+    const canvas=qrDiv.querySelector("canvas");
+    const img=qrDiv.querySelector("img");
+    if(canvas)qrDataUrl=canvas.toDataURL("image/png");
+    else if(img)qrDataUrl=img.src;
+    document.body.removeChild(qrDiv);
+  }catch(e){console.warn("QR generation failed:",e);}
+
+  if(qrDataUrl){
+    body+=p("",{after:100});
+    // QR + légende côte à côte dans une petite table
+    body+=`<w:tbl><w:tblPr><w:tblW w:w="10000" w:type="dxa"/><w:tblBorders>
+      <w:top w:val="none" w:sz="0" w:color="auto"/><w:bottom w:val="none" w:sz="0" w:color="auto"/>
+      <w:left w:val="none" w:sz="0" w:color="auto"/><w:right w:val="none" w:sz="0" w:color="auto"/>
+      <w:insideH w:val="none" w:sz="0" w:color="auto"/><w:insideV w:val="none" w:sz="0" w:color="auto"/>
+    </w:tblBorders></w:tblPr>
+    <w:tr>
+      <w:tc><w:tcPr><w:tcW w:w="1800" w:type="dxa"/></w:tcPr>
+        <w:p><w:pPr><w:spacing w:after="0"/></w:pPr>
+        <w:r><w:rPr><w:noProof/></w:rPr>
+        <w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">
+          <wp:extent cx="900000" cy="900000"/>
+          <wp:docPr id="999" name="QR"/>
+          <a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+            <pic:pic><pic:nvPicPr><pic:cNvPr id="999" name="qr.png"/><pic:cNvPicPr/></pic:nvPicPr>
+            <pic:blipFill><a:blip r:embed="rIdQr"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>
+            <pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="900000" cy="900000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>
+            </pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>
+      </w:tc>
+      <w:tc><w:tcPr><w:tcW w:w="8200" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr>
+        ${p("Accès rapide au dossier",{bold:true,size:18,color:NAVY,after:40})}
+        ${p(val("numPowalco")?"Scannez pour accéder au chantier sur Powalco":"Scannez pour consulter les informations du chantier",{size:15,color:GREY,after:20,italic:true})}
+        ${p(`Référence : ${ref}`,{size:14,color:"AAAAAA",after:0})}
+      </w:tc>
+    </w:tr></w:tbl>`;
+  }
+
   // Footer line
   body+=`<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="36" w:color="${NAVY}"/></w:pBdr><w:spacing w:before="400" w:after="0"/></w:pPr></w:p>`;
   body+=p(`${ref}  |  Document généré automatiquement  |  CILE — Service Travaux`,{size:14,color:"AAAAAA",center:true,after:0});
@@ -1310,6 +2304,9 @@ async function generate(){
       wordRelsContent+=`\n  <Relationship Id="rIdPlan${idx}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/plan${idx}.${ext}"/>`;
     });
   }
+  if(qrDataUrl){
+    wordRelsContent+=`\n  <Relationship Id="rIdQr" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/qr.png"/>`;
+  }
   wordRelsContent+=`\n</Relationships>`;
 
   const zip=new JSZip();
@@ -1327,8 +2324,12 @@ async function generate(){
       zip.file(`word/media/plan${idx}.${ext}`,b64,{base64:true});
     });
   }
+  // Add QR code to zip
+  if(qrDataUrl){
+    zip.file("word/media/qr.png", qrDataUrl.split(",")[1], {base64:true});
+  }
 
-  const blob=await zip.generateAsync({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+  const blob=await zip.generateAsync({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document",compression:"DEFLATE",compressionOptions:{level:6}});
   const url=URL.createObjectURL(blob);
   const a=document.createElement("a");
   a.href=url;
@@ -1336,7 +2337,79 @@ async function generate(){
   a.click();
   URL.revokeObjectURL(url);
 
-  btn.disabled=false;btn.textContent="📄 Générer le Word (.docx)";
+  // Push to history + save prefs (responsable)
+  try{
+    pushHistory(`${val("typeIntervention")} — ${ru.nom} — ${buildAddress()}`);
+    savePrefs();
+    recordGeneration({commune:ru.nom,ref:ref,durationDays:durationDays});
+  }catch(e){console.warn(e);}
+
+  // Launch mail if requested — use offerEmail which supports Web Share API for real attachments
+  if(withMail){
+    setTimeout(()=>{
+      openMailDraft(ru, ref, d1, d2, durationDays, a.download, blob);
+    }, 600); // laisser le temps au téléchargement de s'initier
+  }
+
+  // Restore button label
+  if(btnG){btnG.disabled=false;btnG.textContent="📄 Générer le Word";}
+  if(btnGM){btnGM.disabled=false;btnGM.textContent="📧 Générer + préparer e-mail";}
+}
+
+// ─── MAILTO DRAFT ───
+async function openMailDraft(ru, ref, d1, d2, durationDays, filename, blob){
+  const addr=buildAddress();
+  const subject=`[CILE] Demande d'autorisation voirie — ${addr} — ${d1}`;
+
+  // Destinataires depuis la fiche commune
+  const recipients=[];
+  (ru.contacts||[]).forEach(c=>{if(c.email)recipients.push(c.email);});
+  const to=recipients[0]||"";
+  const cc=recipients.slice(1).join(",");
+
+  // Build body via shared helper
+  const body=buildEmailBody("main");
+
+  // Si on a le blob, offerEmail gère tout (Web Share API si dispo, sinon mailto + guide)
+  if(blob){
+    await offerEmail({
+      to: to,
+      cc: cc,
+      subject: subject,
+      body: body,
+      blob: blob,
+      filename: filename
+    });
+    return;
+  }
+
+  // Fallback : mailto pur (si pas de blob)
+  const params=[];
+  if(cc)params.push("cc="+encodeURIComponent(cc));
+  params.push("subject="+encodeURIComponent(subject));
+  params.push("body="+encodeURIComponent(body));
+  const mailto=`mailto:${encodeURIComponent(to)}?${params.join("&")}`;
+  window.location.href=mailto;
+}
+
+function showMailToast(filename, to, noRecipient){
+  const existing=document.getElementById("mailToast");
+  if(existing)existing.remove();
+  const toast=document.createElement("div");
+  toast.id="mailToast";
+  toast.className="mail-toast";
+  toast.innerHTML=`
+    <div class="mail-toast-header">📧 Mail en cours d'ouverture</div>
+    <div class="mail-toast-body">
+      ${noRecipient?'<div style="color:#8a1a1a;">⚠ Aucun destinataire dans la fiche commune — à renseigner manuellement.</div>':""}
+      <div><strong>⚠ Important :</strong> pensez à <strong>attacher</strong> manuellement le fichier <code>${filename}</code> qui vient d'être téléchargé (les navigateurs ne permettent pas de joindre automatiquement).</div>
+      <div style="margin-top:8px;font-size:11.5px;color:var(--text-dim);">Le mail s'est pas ouvert ? Vérifiez qu'un client mail est configuré par défaut sur votre système.</div>
+    </div>
+    <button class="mail-toast-close" onclick="document.getElementById('mailToast').remove()">Compris</button>
+  `;
+  document.body.appendChild(toast);
+  // Auto-dismiss after 15s
+  setTimeout(()=>{if(document.getElementById("mailToast"))document.getElementById("mailToast").remove();},15000);
 }
 
 function openSignEditor(){
@@ -1359,268 +2432,414 @@ function checkPlans(){
   }
 }
 
+
+
 // ═══════════════════════════════════════════
-// BEYNE-HEUSAY — Fill the original Word template
-// Loads the .docx template from GitHub, injects field values via XML manipulation, downloads
+// BEYNE-HEUSAY — Remplit le template officiel Word
+// Stratégie : charge le .docx officiel (avec son en-tête communal,
+// sa mise en page, ses cases à cocher dessinées), puis injecte les
+// valeurs EN FIN DE CHAQUE CELLULE de tableau — approche robuste qui
+// ne dépend pas de la segmentation interne des runs par Word.
+// ═══════════════════════════════════════════
 async function generateBeyne(){
   const btn=document.getElementById("btnBeyne");
-  btn.disabled=true;btn.textContent="Generation en cours...";
+  btn.disabled=true;btn.textContent="Génération en cours…";
   try{
-    // 1. Load template from GitHub
+    // 1. Charger le template officiel
     const tplUrl="https://valentinangenot.github.io/cile-voirie/Beyne-Heusay_formulaire.docx";
     const resp=await fetch(tplUrl);
-    if(!resp.ok)throw new Error("Impossible de charger le template Beyne-Heusay");
-    const tplBytes=await resp.arrayBuffer();
-    const zip=await JSZip.loadAsync(tplBytes);
-
-    // 2. Read document.xml
+    if(!resp.ok)throw new Error("Impossible de charger le template (vérifiez la connexion).");
+    const zip=await JSZip.loadAsync(await resp.arrayBuffer());
     let xml=await zip.file("word/document.xml").async("string");
 
-    // Helper: create a <w:r> run with text
-    function run(text,opts={}){
-      let rpr='<w:sz w:val="'+(opts.size||20)+'"/>';
-      if(opts.bold)rpr+='<w:b/>';
-      if(opts.color)rpr+='<w:color w:val="'+opts.color+'"/>';
-      return '<w:r><w:rPr>'+rpr+'</w:rPr><w:t xml:space="preserve">'+esc(text)+'</w:t></w:r>';
-    }
-
-    // Helper: inject text after a label pattern in a table cell
-    // Finds "</w:t></w:r>" after the label text and inserts a new run
-    function injectAfterLabel(label, value, opts={}){
-      // Find the label in the XML — it may be split across multiple <w:t> nodes
-      // Strategy: find the last </w:r> before the </w:p> that contains the label, and insert after it
-      const labelEsc=label.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-      // Match the paragraph containing the label (first occurrence only for left column)
-      const re=new RegExp('(<w:t[^>]*>'+labelEsc+'</w:t></w:r>)','');
-      const match=xml.match(re);
-      if(match){
-        xml=xml.replace(match[0], match[0]+run(' '+value,opts));
-        return true;
-      }
-      // Try with the label possibly ending with space+colon
-      const re2=new RegExp('(<w:t[^>]*>[^<]*'+labelEsc+'[^<]*</w:t></w:r>)','');
-      const match2=xml.match(re2);
-      if(match2){
-        xml=xml.replace(match2[0], match2[0]+run(' '+value,opts));
-        return true;
-      }
-      return false;
-    }
-
-    // 3. Fill fields
+    // 2. Préparer les valeurs
     const addr=buildAddress();
-    const fullName=val("responsable").trim();
-    const nameParts=fullName.split(/\s+/);
-    const lastName=nameParts.length>1?nameParts.slice(-1)[0]:fullName;
-    const firstName=nameParts.length>1?nameParts.slice(0,-1).join(" "):"";
-    function fmtD(d){if(!d)return"";const[y,m,day]=d.split("-");return day+"/"+m+"/"+y;}
+    const fullName=(val("responsable")||"").trim();
+    const parts=fullName.split(/\s+/);
+    const lastName=parts.length>1?parts.slice(-1)[0].toUpperCase():fullName.toUpperCase();
+    const firstName=parts.length>1?parts.slice(0,-1).join(" "):"";
+    const fmtD=d=>{if(!d)return"";const[y,m,day]=d.split("-");return day+"/"+m+"/"+y;};
     const today=new Date();
 
-    // Lieu précis — inject after the "Lieu précis" heading paragraph
-    // The structure has "Lieu précis de l'occupation de la voie publique :" then empty paragraphs
-    // We'll add a full paragraph after the last "Lieu précis..." text
-    const lieuMarker='</w:t></w:r></w:p>';
-    const lieuSearch='occupation de la voie publique\xa0:</w:t></w:r></w:p>';
-    // Simpler: just find the third "Lieu" paragraph and add text after it
-    // Actually let's inject after the ":" of "Lieu précis..." by finding the specific pattern
-    // The paragraph P21 is the visible one — let's inject a new paragraph after it with the address
+    // 3. Helpers — générer un paragraphe "rempli" à insérer dans une cellule
+    function escXml(s){return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+    function fillP(text,opts={}){
+      const color=opts.color||"1A4A7A";
+      const size=opts.size||20;
+      const bold=opts.bold!==false?"<w:b/>":"";
+      const ital=opts.italic?"<w:i/>":"";
+      return `<w:p><w:pPr><w:spacing w:before="40" w:after="40"/></w:pPr>`+
+        `<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/>${bold}${ital}<w:sz w:val="${size}"/><w:color w:val="${color}"/></w:rPr>`+
+        `<w:t xml:space="preserve">${escXml(text)}</w:t></w:r></w:p>`;
+    }
+
+    // 4. Injecter une valeur en FIN de la n-ième cellule d'une table.
+    //    On identifie la n-ième <w:tbl> du document, puis la n-ième <w:tc>
+    //    dans cette table, et on insère le paragraphe juste avant </w:tc>.
+    function injectInCell(tableIndex, cellIndex, paragraphHtml){
+      // Trouver toutes les tables
+      const tableMatches=[];
+      let searchPos=0;
+      while(true){
+        const s=xml.indexOf("<w:tbl>",searchPos);
+        if(s<0)break;
+        const e=xml.indexOf("</w:tbl>",s);
+        if(e<0)break;
+        tableMatches.push([s,e+8]);
+        searchPos=e+8;
+      }
+      if(tableIndex>=tableMatches.length)return false;
+      const [ts,te]=tableMatches[tableIndex];
+      const tableXml=xml.slice(ts,te);
+      // Trouver toutes les cellules
+      const cellMatches=[];
+      let cp=0;
+      while(true){
+        const cs=tableXml.indexOf("<w:tc>",cp);
+        if(cs<0)break;
+        const ce=tableXml.indexOf("</w:tc>",cs);
+        if(ce<0)break;
+        cellMatches.push([cs,ce+7]);
+        cp=ce+7;
+      }
+      if(cellIndex>=cellMatches.length)return false;
+      const [cs,ce]=cellMatches[cellIndex];
+      const newCellXml=tableXml.slice(cs,ce-7)+paragraphHtml+tableXml.slice(ce-7,ce);
+      const newTableXml=tableXml.slice(0,cs)+newCellXml+tableXml.slice(ce);
+      xml=xml.slice(0,ts)+newTableXml+xml.slice(te);
+      return true;
+    }
+
+    // Injecter un RUN sur la même ligne que le label (avant </w:p> du dernier paragraphe)
+    // Si la cellule a plusieurs paragraphes, on prend le DERNIER qui n'est pas vide.
+    function injectRunInCell(tableIndex, cellIndex, value, opts){
+      const tableMatches=[];
+      let searchPos=0;
+      while(true){
+        const s=xml.indexOf("<w:tbl>",searchPos);
+        if(s<0)break;
+        const e=xml.indexOf("</w:tbl>",s);
+        if(e<0)break;
+        tableMatches.push([s,e+8]);
+        searchPos=e+8;
+      }
+      if(tableIndex>=tableMatches.length)return false;
+      const [ts,te]=tableMatches[tableIndex];
+      let tableXml=xml.slice(ts,te);
+
+      // Trouver la cellule
+      const cellMatches=[];
+      let cp=0;
+      while(true){
+        const cs=tableXml.indexOf("<w:tc>",cp);
+        if(cs<0)break;
+        const ce=tableXml.indexOf("</w:tc>",cs);
+        if(ce<0)break;
+        cellMatches.push([cs,ce+7]);
+        cp=ce+7;
+      }
+      if(cellIndex>=cellMatches.length)return false;
+      const [cs,ce]=cellMatches[cellIndex];
+      const cellXml=tableXml.slice(cs,ce);
+
+      // Dans la cellule, trouver le dernier </w:p> — on y insère le run juste avant
+      const lastPEnd=cellXml.lastIndexOf("</w:p>");
+      if(lastPEnd<0)return false;
+
+      const color=(opts&&opts.color)||"1A4A7A";
+      const size=(opts&&opts.size)||20;
+      const bold=(opts&&opts.bold===false)?"":"<w:b/>";
+      const run='<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/>'+bold+'<w:sz w:val="'+size+'"/><w:color w:val="'+color+'"/></w:rPr><w:t xml:space="preserve">  '+escXml(value)+'</w:t></w:r>';
+
+      const newCellXml=cellXml.slice(0,lastPEnd)+run+cellXml.slice(lastPEnd);
+      tableXml=tableXml.slice(0,cs)+newCellXml+tableXml.slice(ce);
+      xml=xml.slice(0,ts)+tableXml+xml.slice(te);
+      return true;
+    }
+
+    // 5. Remplir les cases à cocher — le template utilise des formes VML
+    //    dessinées, difficiles à "cocher" directement. On ajoute donc un
+    //    marqueur textuel ✔ juste après "TRAVAUX" et on insère une note
+    //    clarifiant le type.
+    //    On cherche le texte "TRAVAUX" et on insère "  ✔" juste après.
+    xml=xml.replace(
+      /(<w:t[^>]*>TRAVAUX<\/w:t>)/,
+      '$1<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:b/><w:sz w:val="22"/><w:color w:val="2E7D32"/></w:rPr><w:t xml:space="preserve">  ✔</w:t></w:r>'
+    );
+
+    // 6. Lieu précis — on injecte la valeur SUR LA MÊME LIGNE que le label,
+    //    après le ":" final du paragraphe "Lieu précis de l'occupation de la voie publique :"
+    //    Le paragraphe se termine par un run contenant ":" puis </w:p>.
+    //    On cible le ":" qui est dans le paragraphe qui contient "Lieu".
     {
-      // Find all occurrences of "Lieu" paragraphs — we want to add after the visible form field
-      const lieuPattern = /(<w:t[^>]*>Lieu\s+pr..cis[^<]*<\/w:t><\/w:r>)/g;
-      let lastIdx=-1, lastMatch=null, count=0;
-      let m;
-      while((m=lieuPattern.exec(xml))!==null){count++;lastIdx=m.index;lastMatch=m[0];}
-      if(lastMatch){
-        // Find the end of this paragraph
-        const pEnd=xml.indexOf('</w:p>',lastIdx);
+      // Trouver le premier run "Lieu"
+      const m=xml.match(/<w:t[^>]*>Lieu<\/w:t>/);
+      if(m){
+        const pEnd=xml.indexOf("</w:p>",m.index);
         if(pEnd>0){
-          const insertPara='<w:p><w:pPr><w:spacing w:before="40" w:after="40"/></w:pPr>'+run(addr,{size:20,bold:true,color:'1A4A7A'})+'</w:p>';
-          xml=xml.slice(0,pEnd+6)+insertPara+xml.slice(pEnd+6);
+          // Trouver le dernier run ":" DANS ce paragraphe (avant </w:p>)
+          // On cherche en remontant depuis pEnd
+          const paragraphContent=xml.slice(m.index,pEnd);
+          // Le dernier run est ":" — on insère juste avant </w:p>
+          const valueRun='<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:b/><w:sz w:val="22"/><w:color w:val="1A4A7A"/></w:rPr><w:t xml:space="preserve">  '+escXml(addr)+'</w:t></w:r>';
+          xml=xml.slice(0,pEnd)+valueRun+xml.slice(pEnd);
         }
       }
     }
 
-    // Explications — add after the "Explications" heading
+    // 7. Explications complémentaires — même principe, sur la même ligne après " :"
     {
-      const explPattern=/(<w:t[^>]*>Explications compl..mentaires[^<]*<\/w:t><\/w:r>)/g;
-      let lastIdx=-1,lastMatch=null,m;
-      while((m=explPattern.exec(xml))!==null){lastIdx=m.index;lastMatch=m[0];}
-      if(lastMatch){
-        const pEnd=xml.indexOf('</w:p>',lastIdx);
+      const m=xml.match(/<w:t[^>]*>Explications<\/w:t>/);
+      if(m){
+        const pEnd=xml.indexOf("</w:p>",m.index);
         if(pEnd>0){
-          const desc=val("typeIntervention")+(val("natureTravaux")?" - "+val("natureTravaux"):"");
-          let insertP='<w:p><w:pPr><w:spacing w:before="40" w:after="20"/></w:pPr>'+run(desc,{size:18})+'</w:p>';
-          insertP+='<w:p><w:pPr><w:spacing w:before="0" w:after="40"/></w:pPr>'+run("Travaux de distribution d'eau - CILE",{size:16,color:'666666'})+'</w:p>';
-          if(val("description")){
-            insertP+='<w:p><w:pPr><w:spacing w:before="0" w:after="40"/></w:pPr>'+run(val("description"),{size:16,color:'666666'})+'</w:p>';
+          const explText=(val("typeIntervention")||"")+(val("natureTravaux")?" — "+val("natureTravaux"):"");
+          const valueRun='<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:b/><w:sz w:val="20"/><w:color w:val="1A4A7A"/></w:rPr><w:t xml:space="preserve">  '+escXml(explText)+'</w:t></w:r>';
+          xml=xml.slice(0,pEnd)+valueRun+xml.slice(pEnd);
+
+          // Les infos complémentaires (description, Powalco, nuisances) en nouveaux paragraphes
+          // mais DANS le même cadre, donc juste après </w:p> du label
+          let extra="";
+          const desc=val("description");
+          if(desc) extra+=fillP(desc,{size:18,color:"333333",bold:false});
+          if(val("numPowalco")) extra+=fillP("N° Powalco : "+val("numPowalco"),{size:17,color:"666666"});
+          if(val("nuisances")) extra+=fillP("Nuisances : "+val("nuisances"),{size:17,color:"666666",italic:true,bold:false});
+          if(extra){
+            const newPEnd=pEnd+valueRun.length+6; // après le </w:p> original
+            xml=xml.slice(0,newPEnd)+extra+xml.slice(newPEnd);
           }
-          xml=xml.slice(0,pEnd+6)+insertP+xml.slice(pEnd+6);
         }
       }
     }
 
-    // Table 2 — Coordonnées du demandeur (left column = first occurrence of each label)
-    // Firme
-    injectAfterLabel(':','CILE - Cie Intercommunale Liegeoise des Eaux');
-    // Actually, let's be more specific — find the FIRST occurrence of each label
+    // 8. Table des coordonnées (tableIndex=2 dans notre document)
+    //    Structure : 20 cellules (10 lignes × 2 colonnes)
+    //    [0] header gauche  [1] header droite
+    //    [2] civilité G     [3] civilité D
+    //    [4] nom G          [5] nom D
+    //    [6] prénom G       [7] prénom D
+    //    [8] adresse G      [9] adresse D
+    //    [10] CP G          [11] CP D
+    //    [12] localité G    [13] localité D
+    //    [14] tél G         [15] tél D
+    //    [16] GSM G         [17] GSM D
+    //    [18] email G       [19] email D
+    // On remplit uniquement la colonne gauche (demandeur = CILE)
+    injectRunInCell(2, 0, "CILE — Compagnie Intercommunale Liégeoise des Eaux",{size:18,color:"0F2B4A"});
+    // Civilité : on n'a pas l'info, skip
+    injectRunInCell(2, 4, lastName||"—",{size:20,color:"1A4A7A"});
+    injectRunInCell(2, 6, firstName||"—",{size:20,color:"1A4A7A"});
+    injectRunInCell(2, 8, "Rue du Canal de l'Ourthe, 8",{size:20,color:"1A4A7A"});
+    injectRunInCell(2, 10, "4031",{size:20,color:"1A4A7A"});
+    injectRunInCell(2, 12, "Angleur (Liège)",{size:20,color:"1A4A7A"});
+    injectRunInCell(2, 14, "04 367 85 00",{size:20,color:"1A4A7A"});
+    injectRunInCell(2, 16, val("telResponsable")||"—",{size:20,color:"1A4A7A"});
+    injectRunInCell(2, 18, "travaux@cile.be",{size:20,color:"1A4A7A"});
 
-    // For table cells, the pattern is: "Nom" underlined + " " + ":" then we add text
-    // The colon is in a separate <w:r>, so after ":" we inject
-    // Let's use a targeted approach: find each label's ":" and append
+    // 9. Table des dates — on injecte la valeur SUR LA MÊME LIGNE que le label
+    //    "date :" et "heure :", au lieu d'ajouter un paragraphe en dessous.
+    //    Structure dans la cellule : "date" + " " + ":" (3 runs), puis "heure" + " " + ":"
+    //    On cherche les patterns et on insère la valeur juste après le ":".
+    const dateDebutFmt=fmtD(val("dateDebut"));
+    const dateFinFmt=fmtD(val("dateFin"));
+    const hDe=(val("heureDe")||"07:00");
+    const hA=(val("heureA")||"17:00");
+    const dateStyle='<w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:b/><w:sz w:val="22"/><w:color w:val="1A4A7A"/></w:rPr>';
 
-    // Coordonnées — these are in Table 2, left column (first occurrence of each)
-    const coordFields=[
-      {label:"Firme", value:"CILE - Cie Intercommunale Liegeoise des Eaux"},
-      {label:"Nom", value:lastName},
-      {label:"Pr..nom", value:firstName},
-      {label:"Adresse", value:"Rue du Canal de l'Ourthe, 8 - 4031 Angleur"},
-      {label:"Code postal", value:"4031"},
-      {label:"Localit", value:"Angleur (Liege)"},
-      {label:"T..l", value:val("telResponsable")},
-      {label:"GSM", value:val("telResponsable")},
-      {label:"e-mail", value:"travaux@cile.be"},
-    ];
-
-    // For each field, find the FIRST table cell containing the label, find the last </w:r> in it, and inject after
-    coordFields.forEach(f=>{
-      const re=new RegExp('(<w:t[^>]*>'+f.label+'</w:t></w:r>)(.*?)(<w:t[^>]*>\\s*:?\\s*</w:t></w:r>)');
-      const m2=xml.match(re);
-      if(m2){
-        xml=xml.replace(m2[0], m2[0]+run(' '+f.value,{size:18}));
-      } else {
-        // Fallback: simpler pattern — just find "Label" text and ":" separately
-        const re2=new RegExp('(<w:t[^>]*>[^<]*'+f.label+'[^<]*</w:t></w:r>[^]*?<w:t[^>]*>\\s*:?[^<]*</w:t></w:r>)');
-        const m3=xml.match(re2);
-        if(m3){
-          xml=xml.replace(m3[0], m3[0]+run(' '+f.value,{size:18}));
-        }
-      }
-    });
-
-    // Dates — Table 3
-    // "date :" -> inject date, "heure :" -> inject time
-    // First occurrence = début, we need to handle both columns
+    // "date" (premier) → date de début : cherche >date</w:t>...<w:t>:</w:t></w:r>
+    //   puis on ajoute un run après le ":"
+    // On fait 4 remplacements séquentiels dans l'ordre d'apparition :
+    //   date (début), heure (début), date** (fin), heure (fin)
     {
-      // Find table 3 — contains "Début des travaux"
-      const tbl3Start=xml.indexOf('Début des travaux');
-      if(tbl3Start>0){
-        // Work on the table section only
-        const tblStart=xml.lastIndexOf('<w:tbl',tbl3Start);
-        const tblEnd=xml.indexOf('</w:tbl>',tbl3Start)+8;
-        let tblXml=xml.slice(tblStart,tblEnd);
-
-        // Left column: date de début, heure de début
-        // Right column: date de fin, heure de fin
-        // Find "date :" and inject after the colon
-        const dateDebut=fmtD(val("dateDebut"));
-        const dateFin=fmtD(val("dateFin"));
-        const hDe=val("heureDe")||"07:00";
-        const hA=val("heureA")||"17:00";
-
-        // The cells contain multiple paragraphs: "date :" and "heure :" in left cell, same in right cell
-        // Left cell is first <w:tc>, right cell is second <w:tc> in row 1
-        // Let's just do simple sequential replacements
-        // First "date" -> début, second "date**" -> fin
-        tblXml=tblXml.replace(
-          /(<w:t[^>]*>date<\/w:t><\/w:r>)(.*?)(<w:t[^>]*>\s*:<\/w:t><\/w:r>)/,
-          '$1$2$3'+run(' '+dateDebut,{size:20,bold:true})
-        );
-        // First "heure" -> début
-        tblXml=tblXml.replace(
-          /(<w:t[^>]*>heure<\/w:t><\/w:r>)(.*?)(<w:t[^>]*>\s*:<\/w:t><\/w:r>)/,
-          '$1$2$3'+run(' '+hDe,{size:20,bold:true})
-        );
-        // "date**" -> fin
-        tblXml=tblXml.replace(
-          /(<w:t[^>]*>date\*\*<\/w:t><\/w:r>)(.*?)(<w:t[^>]*>\s*:<\/w:t><\/w:r>)/,
-          '$1$2$3'+run(' '+dateFin,{size:20,bold:true})
-        );
-        // Second "heure" -> fin
-        tblXml=tblXml.replace(
-          /(<w:t[^>]*>heure<\/w:t><\/w:r>)(.*?)(<w:t[^>]*>\s*:<\/w:t><\/w:r>)/,
-          '$1$2$3'+run(' '+hA,{size:20,bold:true})
-        );
-
-        xml=xml.slice(0,tblStart)+tblXml+xml.slice(tblEnd);
+      // Premier "date" = début. Regex capture la séquence jusqu'au ":" puis insère.
+      // Attention : il y a 4 ":" à remplir, on doit les faire dans l'ordre et une seule fois chacun.
+      let lastIdx=0;
+      function injectAfterPattern(markerText, value){
+        // Chercher >markerText</w:t> à partir de lastIdx
+        const markerRe=new RegExp('<w:t[^>]*>'+markerText.replace(/\*/g,'\\*')+'</w:t>','g');
+        markerRe.lastIndex=lastIdx;
+        const m=markerRe.exec(xml);
+        if(!m)return false;
+        // Chercher le prochain ":" après cette position
+        const colonRe=/<w:t[^>]*>:<\/w:t><\/w:r>/g;
+        colonRe.lastIndex=m.index;
+        const cm=colonRe.exec(xml);
+        if(!cm)return false;
+        // Insérer la valeur juste après le run du ":"
+        const insertPos=cm.index+cm[0].length;
+        const valueRun='<w:r>'+dateStyle+'<w:t xml:space="preserve"> '+value+'</w:t></w:r>';
+        xml=xml.slice(0,insertPos)+valueRun+xml.slice(insertPos);
+        lastIdx=insertPos+valueRun.length;
+        return true;
       }
+      injectAfterPattern("date", dateDebutFmt);
+      injectAfterPattern("heure", hDe);
+      injectAfterPattern("date**", dateFinFmt);
+      injectAfterPattern("heure", hA);
     }
 
-    // "Fait à Le" — inject city and date
+    // 10. "Fait à [ville]  Le [date]" — structure : runs séparés "Fait", " ", "à ", "Le" dans le même <w:p>
+    //     Attention : il existe un autre "Le" au début de "Le cas échéant" dans la colonne droite —
+    //     on le distingue en exigeant que "Le" soit immédiatement suivi de </w:p> (fin de paragraphe).
+    //     De même, "à " (avec espace) n'apparaît qu'une seule fois dans ce contexte précis.
     {
-      // Pattern: "à " then "Le" — inject "Angleur" after "à" and date after "Le"
+      const runStyle='<w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:b/><w:sz w:val="20"/><w:color w:val="1A4A7A"/></w:rPr>';
+      // Insérer "Angleur " après le run contenant "à " (le seul avec espace)
       xml=xml.replace(
-        /(<w:t[^>]*>à\s*<\/w:t><\/w:r>)/,
-        '$1'+run('Angleur ',{size:20})
+        /(<w:t[^>]*>à <\/w:t><\/w:r>)/,
+        '$1<w:r>'+runStyle+'<w:t xml:space="preserve">Angleur </w:t></w:r>'
       );
+      // Insérer la date après le run "Le" qui est immédiatement suivi de </w:p>
       xml=xml.replace(
-        /(<w:t[^>]*>Le<\/w:t><\/w:r>)/,
-        '$1'+run(' '+today.toLocaleDateString("fr-BE"),{size:20})
+        /(<w:t[^>]*>Le<\/w:t><\/w:r>)(<\/w:p>)/,
+        '$1<w:r>'+runStyle+'<w:t xml:space="preserve"> '+today.toLocaleDateString("fr-BE")+'</w:t></w:r>$2'
       );
     }
 
-    // 4. Save modified document.xml
+    // 11. Mise à jour de document.xml
     zip.file("word/document.xml",xml);
 
-    // 5. Add signalisation plans as extra pages
+    // 12. Ajouter les plans de signalisation en annexe (nouvelles pages)
     const plansJson=localStorage.getItem("cile_signalisation_plans");
     const plans=plansJson?JSON.parse(plansJson):[];
     if(plans.length>0){
-      // Read existing rels
+      // Ajouter les relations pour les images
       let relsXml=await zip.file("word/_rels/document.xml.rels").async("string");
-
       for(let i=0;i<plans.length;i++){
-        const pl=plans[i];
-        const ext=pl.dataUrl.startsWith("data:image/jpeg")?"jpg":"png";
-        const mediaName="planbeyne"+i+"."+ext;
-        const rId="rIdBeyne"+i;
-
-        // Add image to zip
-        zip.file("word/media/"+mediaName, pl.dataUrl.split(",")[1], {base64:true});
-
-        // Add relationship
-        relsXml=relsXml.replace('</Relationships>',
-          '<Relationship Id="'+rId+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/'+mediaName+'"/></Relationships>');
+        const ext=plans[i].dataUrl.startsWith("data:image/jpeg")?"jpg":"png";
+        relsXml=relsXml.replace(
+          "</Relationships>",
+          `<Relationship Id="rIdBeyne${i}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/planbeyne${i}.${ext}"/></Relationships>`
+        );
+        zip.file(`word/media/planbeyne${i}.${ext}`,plans[i].dataUrl.split(",")[1],{base64:true});
       }
       zip.file("word/_rels/document.xml.rels",relsXml);
 
-      // Add plan pages at the end of the document body (before </w:body>)
-      let planPages='';
-      // Page break first
-      planPages+='<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
-      planPages+='<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="200" w:before="100"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="28"/><w:color w:val="0F2B4A"/></w:rPr><w:t xml:space="preserve">ANNEXE - Plans de signalisation</w:t></w:r></w:p>';
-      planPages+='<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="200"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/><w:color w:val="666666"/></w:rPr><w:t xml:space="preserve">'+esc(addr)+'</w:t></w:r></w:p>';
+      // Content types
+      let ct=await zip.file("[Content_Types].xml").async("string");
+      if(!ct.includes('Extension="png"'))ct=ct.replace("</Types>",'<Default Extension="png" ContentType="image/png"/></Types>');
+      if(!ct.includes('Extension="jpg"'))ct=ct.replace("</Types>",'<Default Extension="jpg" ContentType="image/jpeg"/></Types>');
+      zip.file("[Content_Types].xml",ct);
+
+      // Injecter les pages de plans avant </w:body>
+      let planPages="<w:p><w:r><w:br w:type=\"page\"/></w:r></w:p>";
+      planPages+=`<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="160" w:before="80"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:b/><w:sz w:val="32"/><w:color w:val="0F2B4A"/></w:rPr><w:t xml:space="preserve">ANNEXE — Plans de signalisation</w:t></w:r></w:p>`;
+      planPages+=`<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="240"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:sz w:val="20"/><w:color w:val="666666"/></w:rPr><w:t xml:space="preserve">${escXml(addr)}</w:t></w:r></w:p>`;
 
       for(let i=0;i<plans.length;i++){
         if(i>0)planPages+='<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
-        planPages+='<w:p><w:pPr><w:spacing w:after="100"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="22"/><w:color w:val="0F2B4A"/></w:rPr><w:t xml:space="preserve">Plan '+(i+1)+' - '+esc(plans[i].label)+'</w:t></w:r></w:p>';
-        const cx=5760000, cy=Math.round(5760000*0.65);
-        planPages+='<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="200"/></w:pPr><w:r><w:rPr><w:noProof/></w:rPr><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="'+cx+'" cy="'+cy+'"/><wp:docPr id="'+(i+50)+'" name="PlanBeyne'+(i+1)+'"/><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="'+(i+50)+'" name="planbeyne'+i+'.png"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdBeyne'+i+'"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+cx+'" cy="'+cy+'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>';
+        planPages+=`<w:p><w:pPr><w:spacing w:after="120"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:b/><w:sz w:val="24"/><w:color w:val="0F2B4A"/></w:rPr><w:t xml:space="preserve">Plan ${i+1} — ${escXml(plans[i].label||"Plan de signalisation")}</w:t></w:r></w:p>`;
+        const dims=await computeImageEmu(plans[i].dataUrl,6120000,8640000);
+        planPages+=`<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="200"/></w:pPr>`+
+          `<w:r><w:rPr><w:noProof/></w:rPr>`+
+          `<w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">`+
+          `<wp:extent cx="${dims.cx}" cy="${dims.cy}"/>`+
+          `<wp:docPr id="${i+80}" name="PlanBeyne${i}"/>`+
+          `<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">`+
+          `<pic:pic><pic:nvPicPr><pic:cNvPr id="${i+80}" name="planbeyne${i}"/><pic:cNvPicPr/></pic:nvPicPr>`+
+          `<pic:blipFill><a:blip r:embed="rIdBeyne${i}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>`+
+          `<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${dims.cx}" cy="${dims.cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>`+
+          `</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`;
       }
 
-      // Insert before </w:body>
+      // Réinjecter dans le document
       let docXml=await zip.file("word/document.xml").async("string");
-      docXml=docXml.replace('</w:body>',planPages+'</w:body>');
+      docXml=docXml.replace("</w:body>",planPages+"</w:body>");
       zip.file("word/document.xml",docXml);
-
-      // Update Content_Types if needed for png/jpg
-      let ct=await zip.file("[Content_Types].xml").async("string");
-      if(!ct.includes('Extension="png"'))ct=ct.replace('</Types>','<Default Extension="png" ContentType="image/png"/></Types>');
-      if(!ct.includes('Extension="jpg"'))ct=ct.replace('</Types>','<Default Extension="jpg" ContentType="image/jpeg"/></Types>');
-      zip.file("[Content_Types].xml",ct);
     }
 
-    // 6. Download
-    const blob=await zip.generateAsync({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+    // 13. Générer le blob
+    const blob=await zip.generateAsync({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document",compression:"DEFLATE",compressionOptions:{level:6}});
+    const filename="Beyne-Heusay_Demande_Police_"+today.toISOString().slice(0,10)+".docx";
+
+    // 14. Enregistrer dans le dashboard (statistiques)
+    try{
+      recordGeneration({commune:"BEYNE-HEUSAY",ref:"BEYNE-"+today.getTime()});
+    }catch(e){console.warn("Stats enregistrement:",e);}
+
+    // 15. Télécharger + proposer envoi par mail (avec pièce jointe si supporté)
     const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");a.href=url;
-    a.download="Beyne-Heusay_Demande_Police_"+today.toISOString().slice(0,10)+".docx";
-    a.click();URL.revokeObjectURL(url);
+    const a=document.createElement("a");a.href=url;a.download=filename;a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+
+    // 16. Proposer l'envoi par mail automatique
+    setTimeout(async ()=>{
+      await offerEmail({
+        to:"mobilite@beyne-heusay.be",
+        subject:"CILE — Demande d'autorisation voirie — "+val("typeIntervention")+" — "+buildAddress(),
+        body:buildEmailBody("beyne"),
+        blob:blob,
+        filename:filename
+      });
+    },500);
   }catch(e){
     console.error(e);
-    alert("Erreur : "+e.message);
+    alert("Erreur lors de la génération : "+e.message);
   }
   btn.disabled=false;btn.textContent="Formulaire Beyne-Heusay (Word)";
 }
+
+
+// ─── Helper pour calculer les EMU de l'image à sa vraie résolution ───
+// Cible : afficher l'image à pleine qualité (300 DPI si possible) sans excéder les dimensions max
+async function computeImageEmu(dataUrl,maxCx,maxCy){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      const px2emu=9525; // 1 pixel à 96 DPI = 9525 EMU
+      // Largeur native en EMU (à 96 DPI)
+      let cx=img.naturalWidth*px2emu;
+      let cy=img.naturalHeight*px2emu;
+      // Si l'image est plus grande que maxCx, on scale down proportionnellement
+      if(cx>maxCx){const ratio=maxCx/cx;cx=maxCx;cy=Math.round(cy*ratio);}
+      if(cy>maxCy){const ratio=maxCy/cy;cy=maxCy;cx=Math.round(cx*ratio);}
+      // Si l'image est petite, on la laisse à sa taille native (ne pas upscaler = qualité préservée)
+      resolve({cx:Math.round(cx),cy:Math.round(cy),w:img.naturalWidth,h:img.naturalHeight});
+    };
+    img.onerror=()=>resolve({cx:maxCx,cy:Math.round(maxCx*0.65),w:0,h:0});
+    img.src=dataUrl;
+  });
+}
 </script>
+
+<!-- History Modal -->
+<div id="historyModal" class="modal hidden" onclick="if(event.target===this)closeHistory()">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">📂 Historique des demandes récentes</div>
+      <button class="modal-close" onclick="closeHistory()">×</button>
+    </div>
+    <div class="modal-body" id="historyList"></div>
+    <div class="modal-footer">
+      <span style="font-size:11.5px;color:var(--text-dim);">Les 10 dernières demandes sont sauvegardées localement.</span>
+      <button class="btn btn-secondary" onclick="if(confirm('Effacer tout l\\'historique ?')){localStorage.removeItem(LS_HISTORY);closeHistory();}" style="padding:7px 14px;font-size:12px;">🗑 Tout effacer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Water fill progress (cute gadget) -->
+<div class="water-progress" id="waterProgress" title="Avancement du formulaire">
+  <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+    <defs>
+      <linearGradient id="waterGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" style="stop-color:#5cb4e0;stop-opacity:0.95"/>
+        <stop offset="100%" style="stop-color:#1a4a7a;stop-opacity:1"/>
+      </linearGradient>
+      <!-- One wave period: 50 wide, amplitude 3. Duplicated = 100 wide. -->
+      <path id="wavePath" d="M0,3 Q12.5,0 25,3 T50,3 T75,3 T100,3 L100,30 L0,30 Z" fill="url(#waterGrad)"/>
+      <path id="wavePath2" d="M0,3 Q12.5,6 25,3 T50,3 T75,3 T100,3 L100,30 L0,30 Z" fill="url(#waterGrad)"/>
+    </defs>
+    <!-- Group that translates vertically according to % complete -->
+    <g id="waterGroup" transform="translate(0,100)">
+      <!-- Two overlapping wave strips that slide horizontally -->
+      <g class="wave-path-2"><use href="#wavePath2" x="0"/><use href="#wavePath2" x="100"/></g>
+      <g class="wave-path"><use href="#wavePath" x="0"/><use href="#wavePath" x="100"/></g>
+    </g>
+  </svg>
+  <div class="water-label">
+    <span class="pct"><span id="waterPct">0</span>%</span>
+    <span class="lbl">Complété</span>
+  </div>
+</div>
 </body>
 </html>
